@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Extract version from app.go
+        id: version
+        shell: pwsh
+        run: |
+          $content = Get-Content -Path "app.go" -Raw
+          if ($content -match 'var version = (\d+)') {
+            $version = $matches[1]
+            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+            echo "TAG=v$version" >> $env:GITHUB_OUTPUT
+            echo "Extracted version: $version"
+          } else {
+            echo "Failed to extract version"
+            exit 1
+          }
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: bun install
+
+      - name: Build application
+        run: wails build -clean -platform windows/amd64
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: HTranslations Patcher v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## HTranslations Patcher v${{ steps.version.outputs.VERSION }}
+            
+            ### Installation
+            1. Download `htpatcher.exe`
+            2. Run the executable
+            
+            ### Changes
+            - Release version ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          files: build/bin/htpatcher.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
