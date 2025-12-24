@@ -1,16 +1,51 @@
-# README
+# HTPatcher
 
-## About
+HTPatcher is an application for applying translations to RPG Maker games. It works with translation patches downloaded from [HTranslations](https://htranslations.com).
 
-This is the official Wails Svelte-TS template.
+## Usage
 
-## Live Development
+1. Download a translation patch from HTranslations
+2. Launch HTPatcher
+3. Select your game executable
+4. Select the translation patch file
+5. Click "Apply Patch" to apply the translation to your game
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+## Development
 
-## Building
+This application is built using [Wails](https://wails.io) with a Svelte frontend and Go backend.
 
-To build a redistributable, production mode package, use `wails build`.
+### Prerequisites
+
+- Go
+- Bun
+- Wails CLI (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
+
+### Building from Source
+
+1. Clone the repository:
+```bash
+git clone https://github.com/HTranslations/HTPatcher
+cd HTPatcher
+```
+
+2. Install frontend dependencies:
+```bash
+cd frontend
+bun install
+cd ..
+```
+
+3. Build the application:
+```bash
+wails build
+```
+
+The compiled executable will be in the `build/bin` directory.
+
+### Development Mode
+
+To run in live development mode with hot reload:
+
+```bash
+wails dev
+```
