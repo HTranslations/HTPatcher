@@ -91,6 +91,7 @@ export namespace main {
 	    exePath: string;
 	    dataPath: string;
 	    jsPath: string;
+	    gameTitle: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GameInfo(source);
@@ -102,10 +103,27 @@ export namespace main {
 	        this.exePath = source["exePath"];
 	        this.dataPath = source["dataPath"];
 	        this.jsPath = source["jsPath"];
+	        this.gameTitle = source["gameTitle"];
 	    }
 	}
 	
 	
+	export class PatchEntry {
+	    title: string;
+	    systemGameTitle: string;
+	    patchDownloadId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PatchEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.systemGameTitle = source["systemGameTitle"];
+	        this.patchDownloadId = source["patchDownloadId"];
+	    }
+	}
 	export class PatchInfo {
 	    patchPath: string;
 	    dictionary: Record<string, string>;

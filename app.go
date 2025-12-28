@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -28,10 +30,11 @@ func (a *App) startup(ctx context.Context) {
 }
 
 type GameInfo struct {
-	GameDir  string `json:"gameDir"`
-	ExePath  string `json:"exePath"`
-	DataPath string `json:"dataPath"`
-	JsPath   string `json:"jsPath"`
+	GameDir   string `json:"gameDir"`
+	ExePath   string `json:"exePath"`
+	DataPath  string `json:"dataPath"`
+	JsPath    string `json:"jsPath"`
+	GameTitle string `json:"gameTitle"`
 }
 
 type PatchInfo struct {
@@ -40,9 +43,15 @@ type PatchInfo struct {
 	Config     *Config           `json:"config"`
 }
 
-var version = 1
+type PatchEntry struct {
+	Title           string `json:"title"`
+	SystemGameTitle string `json:"systemGameTitle"`
+	PatchDownloadId string `json:"patchDownloadId"`
+}
 
-func (a *App) SelectGameExeFile() (GameInfo, error) {
+var version = 2
+
+func (a *App) SelectGameExeFile() (*GameInfo, error) {
 	gameInfo := GameInfo{}
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select the Game.exe file",
@@ -54,12 +63,13 @@ func (a *App) SelectGameExeFile() (GameInfo, error) {
 		},
 	})
 	if err != nil {
-		return gameInfo, err
+		return nil, err
 	}
 
 	// Set game paths
 	gameInfo.ExePath = filePath
 	gameInfo.GameDir = filepath.Dir(filePath)
+	a.Log(fmt.Sprintf("Game directory: %s", gameInfo.GameDir))
 
 	// Set data and js paths
 	dataPath := filepath.Join(gameInfo.GameDir, "data")
@@ -68,14 +78,38 @@ func (a *App) SelectGameExeFile() (GameInfo, error) {
 		dataPath = filepath.Join(gameInfo.GameDir, "www", "data")
 		jsPath = filepath.Join(gameInfo.GameDir, "www", "js")
 	}
+
+	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
+		a.LogError("Data directory not found")
+		return nil, errors.New("data directory not found")
+	}
+	if _, err := os.Stat(jsPath); os.IsNotExist(err) {
+		a.LogError("JS directory not found")
+		return nil, errors.New("js directory not found")
+	}
+
 	gameInfo.DataPath = dataPath
 	gameInfo.JsPath = jsPath
 
-	return gameInfo, nil
+	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
+	if err != nil {
+		a.LogError("Failed to read system.json")
+		return nil, err
+	}
+
+	var systemInfo System
+	if err := json.Unmarshal(systemInfoData, &systemInfo); err != nil {
+		a.LogError("Failed to parse system.json")
+		return nil, err
+	}
+
+	gameInfo.GameTitle = systemInfo.GameTitle
+	a.Log(fmt.Sprintf("Game title: \"%s\"", gameInfo.GameTitle))
+
+	return &gameInfo, nil
 }
 
-func (a *App) SelectPatchFile() (PatchInfo, error) {
-	patchInfo := PatchInfo{}
+func (a *App) SelectPatchFile() (*PatchInfo, error) {
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select the Patch file",
 		Filters: []runtime.FileFilter{
@@ -86,26 +120,35 @@ func (a *App) SelectPatchFile() (PatchInfo, error) {
 		},
 	})
 	if err != nil {
-		return patchInfo, err
+		return nil, err
 	}
 
-	// Set patch path
-	patchInfo.PatchPath = filePath
+	patchInfo, err := LoadPatchInfo(a, filePath)
+	if err != nil {
+		return nil, err
+	}
+	return patchInfo, nil
+}
+
+func LoadPatchInfo(a *App, filePath string) (*PatchInfo, error) {
+	patchInfo := &PatchInfo{
+		PatchPath: filePath,
+	}
 
 	// Set dictionary
 	r, err := OpenPatch(patchInfo.PatchPath)
 	if err != nil {
-		return patchInfo, err
+		return nil, err
 	}
 	patchInfo.Dictionary, err = ReadDictionary(r)
 	if err != nil {
-		return patchInfo, err
+		return nil, err
 	}
 
 	// Set config
 	patchInfo.Config, err = ReadConfig(r)
 	if err != nil {
-		return patchInfo, err
+		return nil, err
 	}
 
 	if patchInfo.Config.Version > version {
@@ -113,7 +156,7 @@ func (a *App) SelectPatchFile() (PatchInfo, error) {
 		a.LogError("Please update the patcher to the latest version.")
 		a.LogError("You can download the latest version from the website.")
 		a.LogError("https://htranslations.com")
-		return patchInfo, errors.New("patch version is not supported")
+		return nil, errors.New("patch version is not supported")
 	}
 
 	return patchInfo, nil
@@ -143,6 +186,44 @@ func (a *App) LogError(message string) {
 		Message: message,
 		Type:    "error",
 	})
+}
+
+func (a *App) DownloadPatch(patchDownloadId string) (*PatchInfo, error) {
+	a.Log(fmt.Sprintf("Downloading patch with download ID %s", patchDownloadId))
+	filePath, err := DownloadPatch(patchDownloadId)
+	if err != nil {
+		return nil, err
+	}
+
+	a.Log(fmt.Sprintf("Downloaded patch to %s", filePath))
+	a.Log("Loading patch into memory...")
+
+	patchInfo, err := LoadPatchInfo(a, filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	os.Remove(filePath)
+	a.Log(fmt.Sprintf("Removed %s", filePath))
+
+	return patchInfo, nil
+}
+
+func (a *App) FetchAllPatches() ([]PatchEntry, error) {
+	response, err := http.Get("https://htranslations.com/api/patches")
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	var patches []PatchEntry
+	if err := json.Unmarshal(body, &patches); err != nil {
+		return nil, err
+	}
+	return patches, nil
 }
 
 func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo) error {

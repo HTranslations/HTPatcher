@@ -6,6 +6,14 @@ export function ApplyPatch(arg1, arg2) {
   return window['go']['main']['App']['ApplyPatch'](arg1, arg2);
 }
 
+export function DownloadPatch(arg1) {
+  return window['go']['main']['App']['DownloadPatch'](arg1);
+}
+
+export function FetchAllPatches() {
+  return window['go']['main']['App']['FetchAllPatches']();
+}
+
 export function Log(arg1) {
   return window['go']['main']['App']['Log'](arg1);
 }

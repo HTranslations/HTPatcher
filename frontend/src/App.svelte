@@ -1,13 +1,15 @@
 <script lang="ts">
   import "./app.css";
   import { main } from "../wailsjs/go/models.js";
-  import { EventsOn } from "../wailsjs/runtime/runtime.js";
+  import { EventsOn, BrowserOpenURL } from "../wailsjs/runtime/runtime.js";
   import { onMount } from "svelte";
 
   import {
     ApplyPatch,
     SelectGameExeFile,
     SelectPatchFile,
+    FetchAllPatches,
+    DownloadPatch,
   } from "../wailsjs/go/main/App.js";
 
   interface LogMessage {
@@ -32,18 +34,59 @@
     });
   });
 
+  let patches: main.PatchEntry[] = [];
+  let patchSearchQuery = "";
+  let selectedPatch: main.PatchEntry | null = null;
+
+  onMount(async () => {
+    patches = await FetchAllPatches();
+  });
+
+  $: filteredPatches = (() => {
+    const query = patchSearchQuery.toLowerCase();
+    return patches.filter(
+      (patch) =>
+        patch.title.toLowerCase().includes(query) ||
+        patch.systemGameTitle.toLowerCase().includes(query)
+    )
+    // Sort patches by game title match
+    .sort((a, b) => {
+      if (a.systemGameTitle === gameInfo?.gameTitle && b.systemGameTitle !== gameInfo?.gameTitle) return -1;
+      if (a.systemGameTitle !== gameInfo?.gameTitle && b.systemGameTitle === gameInfo?.gameTitle) return 1;
+      return 0;
+    });
+  })();
+
   async function selectGameExeFile(): Promise<void> {
     gameInfo = await SelectGameExeFile();
+    selectedPatch ??= patches.find(patch => patch.systemGameTitle === gameInfo.gameTitle);
+  }
+
+  function togglePatch(patch: main.PatchEntry): void {
+    if (selectedPatch === patch) {
+      selectedPatch = null;
+    } else {
+      selectedPatch = patch;
+      patchInfo = null;
+    }
   }
 
   async function selectPatchFile(): Promise<void> {
     patchInfo = await SelectPatchFile();
+    selectedPatch = null;
+  }
+
+  function clearCustomPatch(): void {
+    patchInfo = null;
   }
 
   async function applyPatch(): Promise<void> {
     logs = [];
     isPatching = true;
     try {
+      if (selectedPatch) {
+        patchInfo = await DownloadPatch(selectedPatch.patchDownloadId);
+      }
       await ApplyPatch(gameInfo, patchInfo);
     } catch (error) {
       logs = [...logs, { message: `Error: ${error}`, type: "error" }];
@@ -52,12 +95,8 @@
     }
   }
 
-  function clearLogs(): void {
-    logs = [];
-  }
-
   function openLink(url: string): void {
-    window.open(url, '_blank');
+    BrowserOpenURL(url);
   }
 </script>
 
@@ -80,7 +119,7 @@
         Discord
       </button>
       <button
-        onclick={() => openLink('https://ko-fi.com/h-translations')}
+        onclick={() => openLink('https://ko-fi.com/htranslations')}
         class="text-sm text-emerald-400 transition-colors font-medium cursor-pointer"
       >
         Support Us
@@ -125,35 +164,87 @@
         </div>
 
         <!-- Patch Selection Section -->
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-3 relative">
             <div class="flex items-center justify-between">
               <span
                 class="text-sm font-medium text-zinc-400 uppercase tracking-wide"
                 >Patch File</span
               >
-              {#if patchInfo}
-                <span class="text-xs text-emerald-400">✓ Selected</span>
-              {/if}
+              <div class="flex items-center gap-2">
+                {#if patchInfo}
+                  <span class="text-xs text-emerald-400">✓ Selected</span>
+                {/if}
+              </div>
             </div>
-
-            {#if patchInfo}
-              <div class="bg-zinc-800 border border-zinc-700 px-4 py-3">
-                <p class="text-sm text-zinc-300 font-mono truncate">
+            {#if patchInfo && !selectedPatch}
+              <!-- Custom File Selected -->
+              <div class="bg-zinc-800 border border-zinc-700 px-4 py-3 flex items-center justify-between">
+                <p class="text-sm text-zinc-300 font-mono truncate flex-1">
                   {patchInfo.patchPath}
                 </p>
+                <button
+                  type="button"
+                  onclick={clearCustomPatch}
+                  class="ml-3 text-zinc-400 hover:text-zinc-300 transition-colors"
+                  title="Clear custom patch file"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
             {:else}
-              <div class="bg-zinc-800 border border-zinc-700 px-4 py-3">
-                <p class="text-sm text-zinc-500 italic">No patch selected</p>
+              <!-- Patches List -->
+              <div class="text-sm text-zinc-500 text-left">
+                Search for patches or select a .htpatch file manually.
+              </div>
+              <!-- Autocomplete Input -->
+              <div class="relative">
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    bind:value={patchSearchQuery}
+                    placeholder="Search patches..."
+                    class="flex-1 bg-zinc-800 border border-zinc-700 px-4 py-3 text-sm text-zinc-300 focus:outline-none focus:ring-0 focus-visible:outline-none transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onclick={selectPatchFile}
+                    class="bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 border border-zinc-700 px-3 py-3 text-zinc-300 transition-colors duration-150 flex items-center justify-center"
+                    title="Select patch file"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                  </button>
+                </div>
+                {#if filteredPatches.length > 0}
+                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 max-h-36 overflow-y-auto">
+                    {#each filteredPatches as patch}
+                      <button
+                        type="button"
+                        onmousedown={() => togglePatch(patch)}
+                        class="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center justify-between relative {selectedPatch === patch ? 'border-2 border-emerald-500' : 'border-b border-zinc-700 last:border-b-0'}"
+                      >
+                        {#if selectedPatch === patch}
+                          <span class="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-1.5 py-0.5">✓</span>
+                        {/if}
+                        <div class="flex-1">
+                          <div class="font-medium">{patch.title}</div>
+                          {#if patch.systemGameTitle}
+                            <div class="text-xs text-zinc-500 mt-1">{patch.systemGameTitle}</div>
+                          {/if}
+                        </div>
+                      </button>
+                    {/each}
+                  </div>
+                {:else}
+                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-500">
+                    No patches found
+                  </div>
+                {/if}
               </div>
             {/if}
-
-            <button
-              onclick={selectPatchFile}
-              class="bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 border border-zinc-700 px-4 py-3 text-sm font-medium transition-colors duration-150"
-            >
-              {patchInfo ? "Change Patch File" : "Select Patch File"}
-            </button>
           </div>
       </div>
 
@@ -161,10 +252,10 @@
         <div class="border-t border-zinc-800 p-6">
           <button
             onclick={applyPatch}
-            disabled={isPatching || !gameInfo || !patchInfo}
+            disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch)}
             class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-700 disabled:cursor-not-allowed px-4 py-4 text-sm font-semibold uppercase tracking-wide transition-colors duration-150"
           >
-            {isPatching ? "Applying Patch..." : gameInfo && patchInfo ? "Apply Patch" : "Select Game.exe and Patch File"}
+            {isPatching ? "Applying Patch..." : gameInfo && (patchInfo || selectedPatch) ? "Apply Patch" : "Select Game.exe and Patch File"}
           </button>
         </div>
     </div>

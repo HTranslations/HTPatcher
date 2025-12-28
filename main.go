@@ -18,8 +18,8 @@ func main() {
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:         "HTTranslations Patcher",
-		Width:         1024,
-		Height:        640,
+		Width:         1280,
+		Height:        720,
 		DisableResize: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,

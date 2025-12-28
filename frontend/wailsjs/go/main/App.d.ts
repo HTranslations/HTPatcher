@@ -4,6 +4,10 @@ import {main} from '../models';
 
 export function ApplyPatch(arg1:main.GameInfo,arg2:main.PatchInfo):Promise<void>;
 
+export function DownloadPatch(arg1:string):Promise<main.PatchInfo>;
+
+export function FetchAllPatches():Promise<Array<main.PatchEntry>>;
+
 export function Log(arg1:string):Promise<void>;
 
 export function LogError(arg1:string):Promise<void>;
