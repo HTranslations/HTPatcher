@@ -49,7 +49,7 @@ type PatchEntry struct {
 	PatchDownloadId string `json:"patchDownloadId"`
 }
 
-var version = 2
+var version = 3
 
 func (a *App) SelectGameExeFile() (*GameInfo, error) {
 	gameInfo := GameInfo{}

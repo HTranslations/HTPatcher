@@ -2,15 +2,31 @@ package main
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 )
+
+var placeholderRegex = regexp.MustCompile(`\\[A-Za-z]*(\[[^\]]*\])?`)
+
+func visibleLength(text string) int {
+	matches := placeholderRegex.FindAllString(text, -1)
+
+	totalPlaceholderLength := 0
+	for _, match := range matches {
+		if !strings.HasPrefix(match, "\\N[") {
+			totalPlaceholderLength += len(match)
+		}
+	}
+
+	return len(text) - totalPlaceholderLength
+}
 
 func Wrap(text string, width int) string {
 	if width <= 0 {
 		width = 58
 	}
 
-	if text == "" || len(text) <= width {
+	if text == "" || visibleLength(text) <= width {
 		return text
 	}
 
@@ -19,25 +35,53 @@ func Wrap(text string, width int) string {
 	currentLine := ""
 
 	for _, word := range words {
-		// If adding this word would exceed the width, start a new line
-		if len(currentLine)+len(word)+1 > width {
+		spaceLength := 0
+		if len(currentLine) > 0 {
+			spaceLength = 1
+		}
+		currentVisibleLen := visibleLength(currentLine)
+		wordVisibleLen := visibleLength(word)
+
+		if currentVisibleLen+wordVisibleLen+spaceLength > width {
 			if len(currentLine) > 0 {
 				lines = append(lines, strings.TrimSpace(currentLine))
 				currentLine = word
 			} else {
-				// If the word itself is longer than width, break it
-				if len(word) > width {
-					// Break long words at character boundaries
-					for i := 0; i < len(word); i += width {
-						end := min(i+width, len(word))
-						lines = append(lines, word[i:end])
+				if wordVisibleLen > width {
+					visibleChars := 0
+					actualPos := 0
+					wordStart := 0
+
+					for actualPos < len(word) {
+						loc := placeholderRegex.FindStringIndex(word[actualPos:])
+
+						if loc != nil && loc[0] == 0 {
+							placeholder := word[actualPos : actualPos+loc[1]]
+							actualPos += loc[1]
+
+							if strings.HasPrefix(placeholder, "\\N[") {
+								visibleChars += len(placeholder)
+							}
+						} else {
+							visibleChars++
+							actualPos++
+						}
+
+						if visibleChars >= width {
+							lines = append(lines, word[wordStart:actualPos])
+							wordStart = actualPos
+							visibleChars = 0
+						}
+					}
+
+					if wordStart < len(word) {
+						lines = append(lines, word[wordStart:])
 					}
 				} else {
 					lines = append(lines, word)
 				}
 			}
 		} else {
-			// Add word to current line
 			if len(currentLine) > 0 {
 				currentLine += " " + word
 			} else {
@@ -46,7 +90,6 @@ func Wrap(text string, width int) string {
 		}
 	}
 
-	// Add the last line if it has content
 	if len(currentLine) > 0 {
 		lines = append(lines, strings.TrimSpace(currentLine))
 	}
