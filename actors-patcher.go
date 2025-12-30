@@ -41,7 +41,7 @@ func PatchActors(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if actor == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[actor.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(actor.Name)]
 		if ok {
 			actor.Name = name
 		}

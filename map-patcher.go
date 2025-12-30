@@ -99,7 +99,7 @@ func PatchMap(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	if displayName, ok := patchInfo.Dictionary[mapData.DisplayName]; ok {
+	if displayName, ok := patchInfo.Dictionary[GetTranslationKey(mapData.DisplayName)]; ok {
 		mapData.DisplayName = displayName
 	}
 

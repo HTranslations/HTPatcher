@@ -165,3 +165,7 @@ func mergeAny(original, changes any, key string) any {
 		return changes
 	}
 }
+
+func GetTranslationKey(text string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(text, "\n", ""), " ", ""))
+}

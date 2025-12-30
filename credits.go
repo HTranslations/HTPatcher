@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"image"
 	"image/draw"
 	"image/png"
@@ -16,7 +17,7 @@ var creditsPng []byte
 
 var pngHeader = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52}
 
-func AddCreditsToResource(path string, encryptionKey string) error {
+func AddCreditsToResource(path string, encryptionKey string, creditsLocation string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -49,7 +50,19 @@ func AddCreditsToResource(path string, encryptionKey string) error {
 
 	// Draw the credits image on top of the original image at the bottom-left corner
 	creditsBounds := creditsImg.Bounds()
-	offset := image.Pt(0, bounds.Max.Y-creditsBounds.Dy())
+	var offset image.Point
+	switch creditsLocation {
+	case "bottom_left":
+		offset = image.Pt(0, bounds.Max.Y-creditsBounds.Dy())
+	case "bottom_right":
+		offset = image.Pt(bounds.Max.X-creditsBounds.Dx(), bounds.Max.Y-creditsBounds.Dy())
+	case "top_left":
+		offset = image.Pt(0, 0)
+	case "top_right":
+		offset = image.Pt(bounds.Max.X-creditsBounds.Dx(), 0)
+	default:
+		return errors.New("invalid credits location")
+	}
 	draw.Draw(rgba, creditsBounds.Add(offset), creditsImg, creditsBounds.Min, draw.Over)
 
 	// Encode the modified image

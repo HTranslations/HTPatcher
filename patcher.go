@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,7 +46,6 @@ func PatchDataFile(ctx context.Context, filePath string, patchInfo PatchInfo) er
 		Message: "Patching: " + filename,
 		Type:    "info",
 	})
-	fmt.Println("Patching file: ", filePath)
 	fileType := getDataFileTypeMap(filePath)
 
 	data, err := os.ReadFile(filePath)

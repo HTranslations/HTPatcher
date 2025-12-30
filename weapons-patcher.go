@@ -31,11 +31,11 @@ func PatchWeapons(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if weapon == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[weapon.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(weapon.Name)]
 		if ok {
 			weapon.Name = name
 		}
-		description, ok := patchInfo.Dictionary[weapon.Description]
+		description, ok := patchInfo.Dictionary[GetTranslationKey(weapon.Description)]
 		if ok {
 			weapon.Description = Wrap(NoNewline(description), patchInfo.Config.WrapWidth)
 		}

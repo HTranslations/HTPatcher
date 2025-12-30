@@ -49,7 +49,7 @@ type PatchEntry struct {
 	PatchDownloadId string `json:"patchDownloadId"`
 }
 
-var version = 3
+var version = 4
 
 func (a *App) SelectGameExeFile() (*GameInfo, error) {
 	gameInfo := GameInfo{}
@@ -246,6 +246,25 @@ func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo) error {
 		}
 	}
 
+	// Patch plugins.js
+	pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
+	err = UpdatePluginsJs(a.ctx, pluginsJsPath, patchInfo.Config.PluginsToPatch, patchInfo.Dictionary)
+	if err != nil {
+		a.LogError("Failed to update plugins.js")
+		return err
+	}
+
+	// Apply replace rules
+	for _, pluginToPatch := range patchInfo.Config.PluginsToPatch {
+		for _, replaceRule := range pluginToPatch.ReplaceRules {
+			err = ApplyReplaceRule(a.ctx, gameInfo.JsPath, pluginToPatch.Plugin, replaceRule)
+			if err != nil {
+				a.LogError("Failed to apply plugin replace rule")
+				return err
+			}
+		}
+	}
+
 	a.Log("Reading system information...")
 	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
 	if err != nil {
@@ -273,8 +292,12 @@ func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo) error {
 		return errors.New("main screen image not found")
 	}
 
+	if patchInfo.Config.CreditsLocation == "" {
+		patchInfo.Config.CreditsLocation = "bottom_left"
+	}
+
 	a.Log("Adding credits to main screen image...")
-	err = AddCreditsToResource(pngPath, systemInfo.EncryptionKey)
+	err = AddCreditsToResource(pngPath, systemInfo.EncryptionKey, patchInfo.Config.CreditsLocation)
 	if err != nil {
 		a.LogError("Failed to add credits")
 		return err

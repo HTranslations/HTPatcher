@@ -44,23 +44,23 @@ func PatchStates(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if state == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[state.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(state.Name)]
 		if ok {
 			state.Name = name
 		}
-		message1, ok := patchInfo.Dictionary[state.Message1]
+		message1, ok := patchInfo.Dictionary[GetTranslationKey(state.Message1)]
 		if ok {
 			state.Message1 = Wrap(NoNewline(message1), patchInfo.Config.WrapWidth)
 		}
-		message2, ok := patchInfo.Dictionary[state.Message2]
+		message2, ok := patchInfo.Dictionary[GetTranslationKey(state.Message2)]
 		if ok {
 			state.Message2 = Wrap(NoNewline(message2), patchInfo.Config.WrapWidth)
 		}
-		message3, ok := patchInfo.Dictionary[state.Message3]
+		message3, ok := patchInfo.Dictionary[GetTranslationKey(state.Message3)]
 		if ok {
 			state.Message3 = Wrap(NoNewline(message3), patchInfo.Config.WrapWidth)
 		}
-		message4, ok := patchInfo.Dictionary[state.Message4]
+		message4, ok := patchInfo.Dictionary[GetTranslationKey(state.Message4)]
 		if ok {
 			state.Message4 = Wrap(NoNewline(message4), patchInfo.Config.WrapWidth)
 		}

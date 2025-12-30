@@ -53,7 +53,7 @@ func PatchTroops(data []byte, patchInfo PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		if name, ok := patchInfo.Dictionary[troop.Name]; ok {
+		if name, ok := patchInfo.Dictionary[GetTranslationKey(troop.Name)]; ok {
 			troop.Name = name
 		}
 

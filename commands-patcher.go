@@ -18,7 +18,7 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 	// Handle double-quoted strings: "text"
 	if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"") {
 		s := value[1 : len(value)-1]
-		if translation, ok := dictionary[s]; ok {
+		if translation, ok := dictionary[GetTranslationKey(s)]; ok {
 			return "\"" + translation + "\""
 		}
 		return value
@@ -35,7 +35,7 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 				newArray := make([]any, 0, len(jsonArray))
 				for _, item := range jsonArray {
 					if str, ok := item.(string); ok {
-						if translation, ok := dictionary[str]; ok {
+						if translation, ok := dictionary[GetTranslationKey(str)]; ok {
 							newArray = append(newArray, translation)
 						} else {
 							newArray = append(newArray, str)
@@ -52,7 +52,7 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 		}
 
 		// Regular single-quoted string
-		if translation, ok := dictionary[s]; ok {
+		if translation, ok := dictionary[GetTranslationKey(s)]; ok {
 			return "'" + translation + "'"
 		}
 		return value
@@ -66,7 +66,7 @@ func patchParameterValue(value any, dictionary map[string]string) any {
 	switch v := value.(type) {
 	case string:
 		// Base case: translate string if found in dictionary
-		if translation, ok := dictionary[getTranslationKey(v)]; ok {
+		if translation, ok := dictionary[GetTranslationKey(v)]; ok {
 			return translation
 		}
 		return v
@@ -90,9 +90,6 @@ func patchParameterValue(value any, dictionary map[string]string) any {
 	}
 }
 
-func getTranslationKey(text string) string {
-	return strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(text, "\n", ""), " ", ""))
-}
 
 func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventCommand, error) {
 	commandsToDelete := []int{}
@@ -104,7 +101,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 		if command.Code == 101 {
 			if len(command.Parameters) > 4 {
 				if key, ok := command.Parameters[4].(string); ok {
-					if speakerName, ok := patchInfo.Dictionary[getTranslationKey(key)]; ok {
+					if speakerName, ok := patchInfo.Dictionary[GetTranslationKey(key)]; ok {
 						command.Parameters[4] = speakerName
 					}
 				}
@@ -126,7 +123,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 			}
 			commandIndex--
 
-			translationKey := getTranslationKey(fullText)
+			translationKey := GetTranslationKey(fullText)
 			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
 				dialogueCommands[0].Parameters[0] = Wrap(translation, patchInfo.Config.WrapWidth)
 			}
@@ -140,7 +137,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 		// Command 405 is rolling text and param 0 is the text
 		if command.Code == 405 {
 			if text, ok := command.Parameters[0].(string); ok {
-				if translation, ok := patchInfo.Dictionary[getTranslationKey(text)]; ok {
+				if translation, ok := patchInfo.Dictionary[GetTranslationKey(text)]; ok {
 					command.Parameters[0] = translation
 				}
 			}
@@ -151,7 +148,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 			if choices, ok := command.Parameters[0].([]any); ok {
 				for i, choice := range choices {
 					if choice, ok := choice.(string); ok {
-						if translation, ok := patchInfo.Dictionary[getTranslationKey(choice)]; ok {
+						if translation, ok := patchInfo.Dictionary[GetTranslationKey(choice)]; ok {
 							command.Parameters[0].([]any)[i] = translation
 						}
 					}
@@ -162,7 +159,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 		// Command 408 is choice description and param 0 is the description
 		if command.Code == 408 {
 			if description, ok := command.Parameters[0].(string); ok {
-				if translation, ok := patchInfo.Dictionary[getTranslationKey(description)]; ok {
+				if translation, ok := patchInfo.Dictionary[GetTranslationKey(description)]; ok {
 					command.Parameters[0] = Wrap(NoNewline(translation), patchInfo.Config.WrapWidth)
 				}
 			}
@@ -201,7 +198,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 								switch parameter.RootType {
 								case "string":
 									if options, ok := command.Parameters[3].(string); ok {
-										if translation, ok := patchInfo.Dictionary[getTranslationKey(options)]; ok {
+										if translation, ok := patchInfo.Dictionary[GetTranslationKey(options)]; ok {
 											command.Parameters[3] = Wrap(translation, patchInfo.Config.WrapWidth)
 										}
 									}

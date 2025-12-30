@@ -58,19 +58,19 @@ func PatchSkills(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if skill == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[skill.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(skill.Name)]
 		if ok {
 			skill.Name = name
 		}
-		description, ok := patchInfo.Dictionary[skill.Description]
+		description, ok := patchInfo.Dictionary[GetTranslationKey(skill.Description)]
 		if ok {
 			skill.Description = Wrap(NoNewline(description), patchInfo.Config.WrapWidth)
 		}
-		message1, ok := patchInfo.Dictionary[skill.Message1]
+		message1, ok := patchInfo.Dictionary[GetTranslationKey(skill.Message1)]
 		if ok {
 			skill.Message1 = Wrap(NoNewline(message1), patchInfo.Config.WrapWidth)
 		}
-		message2, ok := patchInfo.Dictionary[skill.Message2]
+		message2, ok := patchInfo.Dictionary[GetTranslationKey(skill.Message2)]
 		if ok {
 			skill.Message2 = Wrap(NoNewline(message2), patchInfo.Config.WrapWidth)
 		}

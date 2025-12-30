@@ -45,11 +45,11 @@ func PatchEnemies(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if enemy == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[enemy.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(enemy.Name)]
 		if ok {
 			enemy.Name = name
 		}
-		note, ok := patchInfo.Dictionary[enemy.Note]
+		note, ok := patchInfo.Dictionary[GetTranslationKey(enemy.Note)]
 		if ok {
 			enemy.Note = note
 		}

@@ -1,5 +1,53 @@
 export namespace main {
 	
+	export class PluginReplaceRule {
+	    match: string;
+	    replace: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PluginReplaceRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.match = source["match"];
+	        this.replace = source["replace"];
+	    }
+	}
+	export class PluginToPatch {
+	    plugin: string;
+	    parametersPatchScript: string;
+	    replaceRules: PluginReplaceRule[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PluginToPatch(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.plugin = source["plugin"];
+	        this.parametersPatchScript = source["parametersPatchScript"];
+	        this.replaceRules = this.convertValues(source["replaceRules"], PluginReplaceRule);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ParameterPathToPatch {
 	    path: string;
 	    type: string;
@@ -55,6 +103,8 @@ export namespace main {
 	    wrapWidth: number;
 	    version: number;
 	    parametersToPatch: ParameterToPatch[];
+	    pluginsToPatch: PluginToPatch[];
+	    creditsLocation: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -66,6 +116,8 @@ export namespace main {
 	        this.wrapWidth = source["wrapWidth"];
 	        this.version = source["version"];
 	        this.parametersToPatch = this.convertValues(source["parametersToPatch"], ParameterToPatch);
+	        this.pluginsToPatch = this.convertValues(source["pluginsToPatch"], PluginToPatch);
+	        this.creditsLocation = source["creditsLocation"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -158,6 +210,7 @@ export namespace main {
 		    return a;
 		}
 	}
+	
 
 }
 

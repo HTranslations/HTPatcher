@@ -30,11 +30,11 @@ func PatchArmors(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if armor == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[armor.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(armor.Name)]
 		if ok {
 			armor.Name = name
 		}
-		description, ok := patchInfo.Dictionary[armor.Description]
+		description, ok := patchInfo.Dictionary[GetTranslationKey(armor.Description)]
 		if ok {
 			armor.Description = Wrap(NoNewline(description), patchInfo.Config.WrapWidth)
 		}

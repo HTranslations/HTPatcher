@@ -53,11 +53,11 @@ func PatchItems(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if item == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[item.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(item.Name)]
 		if ok {
 			item.Name = name
 		}
-		description, ok := patchInfo.Dictionary[item.Description]
+		description, ok := patchInfo.Dictionary[GetTranslationKey(item.Description)]
 		if ok {
 			item.Description = Wrap(NoNewline(description), patchInfo.Config.WrapWidth)
 		}

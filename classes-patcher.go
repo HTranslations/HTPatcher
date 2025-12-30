@@ -33,11 +33,11 @@ func PatchClasses(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if class == nil {
 			continue
 		}
-		name, ok := patchInfo.Dictionary[class.Name]
+		name, ok := patchInfo.Dictionary[GetTranslationKey(class.Name)]
 		if ok {
 			class.Name = name
 		}
-		note, ok := patchInfo.Dictionary[class.Note]
+		note, ok := patchInfo.Dictionary[GetTranslationKey(class.Note)]
 		if ok {
 			class.Note = note
 		}

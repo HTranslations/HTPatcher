@@ -53,6 +53,19 @@ type Config struct {
 	WrapWidth         int                `json:"wrapWidth"`
 	Version           int                `json:"version"`
 	ParametersToPatch []ParameterToPatch `json:"parametersToPatch"`
+	PluginsToPatch    []PluginToPatch    `json:"pluginsToPatch"`
+	CreditsLocation   string             `json:"creditsLocation"`
+}
+
+type PluginToPatch struct {
+	Plugin                string              `json:"plugin"`
+	ParametersPatchScript string              `json:"parametersPatchScript"` // this is a lua script
+	ReplaceRules          []PluginReplaceRule `json:"replaceRules"`
+}
+
+type PluginReplaceRule struct {
+	Match   string `json:"match"`
+	Replace string `json:"replace"`
 }
 
 type ParameterToPatch struct {
