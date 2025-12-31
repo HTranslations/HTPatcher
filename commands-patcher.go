@@ -24,6 +24,16 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 		return value
 	}
 
+	// Handle double-quoted strings with semicolon: "text";
+	// This is a workaround for now until we understand how to handle this properly
+	if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\";") {
+		s := value[1 : len(value)-2]
+		if translation, ok := dictionary[GetTranslationKey(s)]; ok {
+			return "\"" + translation + "\";"
+		}
+		return value
+	}
+
 	// Handle single-quoted strings: 'text' or '[...]'
 	if strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'") {
 		s := value[1 : len(value)-1]
@@ -89,7 +99,6 @@ func patchParameterValue(value any, dictionary map[string]string) any {
 		return v
 	}
 }
-
 
 func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventCommand, error) {
 	commandsToDelete := []int{}

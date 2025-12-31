@@ -61,6 +61,10 @@ func PatchItems(data []byte, patchInfo PatchInfo) ([]byte, error) {
 		if ok {
 			item.Description = Wrap(NoNewline(description), patchInfo.Config.WrapWidth)
 		}
+		note, ok := patchInfo.Dictionary[GetTranslationKey(item.Note)]
+		if ok {
+			item.Note = NoNewline(note)
+		}
 	}
 
 	mergedData, err := MergeJsonChanges(data, items)
