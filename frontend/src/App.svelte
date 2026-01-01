@@ -219,7 +219,7 @@
                   </button>
                 </div>
                 {#if filteredPatches.length > 0}
-                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 max-h-36 overflow-y-auto">
+                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 max-h-47 overflow-y-auto">
                     {#each filteredPatches as patch}
                       <button
                         type="button"

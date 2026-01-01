@@ -103,6 +103,7 @@ func patchParameterValue(value any, dictionary map[string]string) any {
 func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventCommand, error) {
 	commandsToDelete := []int{}
 	commandIndex := 0
+	last101CommandHasSpeakerThumbnail := false
 	for commandIndex < len(commands) {
 		command := commands[commandIndex]
 
@@ -115,10 +116,21 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 					}
 				}
 			}
+			last101CommandHasSpeakerThumbnail = false
+			if thumbnail, ok := command.Parameters[0].(string); ok {
+				if thumbnail != "" {
+					last101CommandHasSpeakerThumbnail = true
+				}
+			}
 		}
 
 		// Command 401 is continuation of dialogue and param 0 is the text
 		if command.Code == 401 {
+			wrapWidth := patchInfo.Config.WrapWidth
+			if last101CommandHasSpeakerThumbnail && patchInfo.Config.DynamicWrapWidth {
+				wrapWidth -= 10
+			}
+
 			dialogueCommands := []*EventCommand{}
 			fullText := ""
 
@@ -134,7 +146,7 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 
 			translationKey := GetTranslationKey(fullText)
 			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
-				dialogueCommands[0].Parameters[0] = Wrap(translation, patchInfo.Config.WrapWidth)
+				dialogueCommands[0].Parameters[0] = Wrap(translation, wrapWidth)
 			}
 
 			// Only keep the first command in the dialogue

@@ -34,6 +34,7 @@ type GameInfo struct {
 	ExePath   string `json:"exePath"`
 	DataPath  string `json:"dataPath"`
 	JsPath    string `json:"jsPath"`
+	ImgPath   string `json:"imgPath"`
 	GameTitle string `json:"gameTitle"`
 }
 
@@ -49,7 +50,7 @@ type PatchEntry struct {
 	PatchDownloadId string `json:"patchDownloadId"`
 }
 
-var version = 5
+var version = 6
 
 func (a *App) SelectGameExeFile() (*GameInfo, error) {
 	gameInfo := GameInfo{}
@@ -73,9 +74,11 @@ func (a *App) SelectGameExeFile() (*GameInfo, error) {
 
 	// Set data and js paths
 	dataPath := filepath.Join(gameInfo.GameDir, "data")
+	imgPath := filepath.Join(gameInfo.GameDir, "img")
 	jsPath := filepath.Join(gameInfo.GameDir, "js")
 	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
 		dataPath = filepath.Join(gameInfo.GameDir, "www", "data")
+		imgPath = filepath.Join(gameInfo.GameDir, "www", "img")
 		jsPath = filepath.Join(gameInfo.GameDir, "www", "js")
 	}
 
@@ -87,9 +90,14 @@ func (a *App) SelectGameExeFile() (*GameInfo, error) {
 		a.LogError("JS directory not found")
 		return nil, errors.New("js directory not found")
 	}
+	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
+		a.LogError("IMG directory not found")
+		return nil, errors.New("img directory not found")
+	}
 
 	gameInfo.DataPath = dataPath
 	gameInfo.JsPath = jsPath
+	gameInfo.ImgPath = imgPath
 
 	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
 	if err != nil {
@@ -280,12 +288,12 @@ func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo) error {
 
 	a.Log("Looking for main screen image...")
 	mainScreenImageName := systemInfo.Title1Name
-	pngPath := filepath.Join(gameInfo.GameDir, "img", "titles1", mainScreenImageName+".png")
+	pngPath := filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png")
 	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		pngPath = filepath.Join(gameInfo.GameDir, "img", "titles1", mainScreenImageName+".rpgmvp")
+		pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".rpgmvp")
 	}
 	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		pngPath = filepath.Join(gameInfo.GameDir, "img", "titles1", mainScreenImageName+".png_")
+		pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png_")
 	}
 	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
 		a.LogError("Main screen image not found")

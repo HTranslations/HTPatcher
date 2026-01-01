@@ -55,6 +55,7 @@ type Config struct {
 	ParametersToPatch []ParameterToPatch `json:"parametersToPatch"`
 	PluginsToPatch    []PluginToPatch    `json:"pluginsToPatch"`
 	CreditsLocation   string             `json:"creditsLocation"`
+	DynamicWrapWidth  bool               `json:"dynamicWrapWidth"`
 }
 
 type PluginToPatch struct {

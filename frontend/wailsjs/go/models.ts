@@ -105,6 +105,7 @@ export namespace main {
 	    parametersToPatch: ParameterToPatch[];
 	    pluginsToPatch: PluginToPatch[];
 	    creditsLocation: string;
+	    dynamicWrapWidth: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -118,6 +119,7 @@ export namespace main {
 	        this.parametersToPatch = this.convertValues(source["parametersToPatch"], ParameterToPatch);
 	        this.pluginsToPatch = this.convertValues(source["pluginsToPatch"], PluginToPatch);
 	        this.creditsLocation = source["creditsLocation"];
+	        this.dynamicWrapWidth = source["dynamicWrapWidth"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -143,6 +145,7 @@ export namespace main {
 	    exePath: string;
 	    dataPath: string;
 	    jsPath: string;
+	    imgPath: string;
 	    gameTitle: string;
 	
 	    static createFrom(source: any = {}) {
@@ -155,6 +158,7 @@ export namespace main {
 	        this.exePath = source["exePath"];
 	        this.dataPath = source["dataPath"];
 	        this.jsPath = source["jsPath"];
+	        this.imgPath = source["imgPath"];
 	        this.gameTitle = source["gameTitle"];
 	    }
 	}
