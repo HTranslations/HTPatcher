@@ -147,11 +147,10 @@ func PatchCommands(commands []*EventCommand, patchInfo PatchInfo) ([]*EventComma
 			translationKey := GetTranslationKey(fullText)
 			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
 				dialogueCommands[0].Parameters[0] = Wrap(translation, wrapWidth)
-			}
-
-			// Only keep the first command in the dialogue
-			for k := (commandIndex - len(dialogueCommands) + 2); k <= commandIndex; k++ {
-				commandsToDelete = append(commandsToDelete, k)
+				// Only keep the first command in the dialogue
+				for k := (commandIndex - len(dialogueCommands) + 2); k <= commandIndex; k++ {
+					commandsToDelete = append(commandsToDelete, k)
+				}
 			}
 		}
 
