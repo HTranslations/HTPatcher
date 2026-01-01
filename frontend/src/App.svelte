@@ -21,6 +21,7 @@
   let patchInfo: main.PatchInfo | null = null;
   let logs: LogMessage[] = [];
   let isPatching = false;
+  let launchAfterPatch = true;
   let logContainer: HTMLDivElement;
 
   onMount(() => {
@@ -87,7 +88,7 @@
       if (selectedPatch) {
         patchInfo = await DownloadPatch(selectedPatch.patchDownloadId);
       }
-      await ApplyPatch(gameInfo, patchInfo);
+      await ApplyPatch(gameInfo, patchInfo, launchAfterPatch);
     } catch (error) {
       logs = [...logs, { message: `Error: ${error}`, type: "error" }];
     } finally {
@@ -219,7 +220,7 @@
                   </button>
                 </div>
                 {#if filteredPatches.length > 0}
-                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 max-h-47 overflow-y-auto">
+                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 max-h-38 overflow-y-auto">
                     {#each filteredPatches as patch}
                       <button
                         type="button"
@@ -249,7 +250,17 @@
       </div>
 
       <!-- Footer Action -->
-        <div class="border-t border-zinc-800 p-6">
+        <div class="border-t border-zinc-800 p-6 flex flex-col gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              bind:checked={launchAfterPatch}
+              class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
+            />
+            <span class="text-sm text-zinc-400">
+              Launch game after patching
+            </span>
+          </label>
           <button
             onclick={applyPatch}
             disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch)}

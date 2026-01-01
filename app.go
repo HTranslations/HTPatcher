@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -234,7 +235,7 @@ func (a *App) FetchAllPatches() ([]PatchEntry, error) {
 	return patches, nil
 }
 
-func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo) error {
+func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo, launchAfterPatch bool) error {
 	a.Log("Starting patch application...")
 
 	// list json files in data folder
@@ -312,5 +313,25 @@ func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo) error {
 	}
 
 	a.LogSuccess("✓ Patch applied successfully!")
+
+	if launchAfterPatch {
+		a.Log("Launching game...")
+		err = LaunchGame(gameInfo.ExePath)
+		a.Log("Game launched successfully!")
+		if err != nil {
+			a.LogError("Failed to launch game")
+			return err
+		}
+	}
+	return nil
+}
+
+func LaunchGame(exePath string) error {
+	cmd := exec.Command(exePath)
+	cmd.Dir = filepath.Dir(exePath)
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
 	return nil
 }
