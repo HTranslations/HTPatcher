@@ -162,10 +162,33 @@ export namespace main {
 	        this.gameTitle = source["gameTitle"];
 	    }
 	}
+	export class LocatedGame {
+	    id: string;
+	    gameDir: string;
+	    exePath: string;
+	    rjCode: string;
+	    translated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocatedGame(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.gameDir = source["gameDir"];
+	        this.exePath = source["exePath"];
+	        this.rjCode = source["rjCode"];
+	        this.translated = source["translated"];
+	    }
+	}
 	
 	
 	export class PatchEntry {
 	    title: string;
+	    rjCode: string;
+	    storeLink: string;
+	    releaseDate: string;
 	    systemGameTitle: string;
 	    patchDownloadId: string;
 	
@@ -176,6 +199,9 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.rjCode = source["rjCode"];
+	        this.storeLink = source["storeLink"];
+	        this.releaseDate = source["releaseDate"];
 	        this.systemGameTitle = source["systemGameTitle"];
 	        this.patchDownloadId = source["patchDownloadId"];
 	    }
@@ -183,6 +209,7 @@ export namespace main {
 	export class PatchInfo {
 	    patchPath: string;
 	    dictionary: Record<string, string>;
+	    overrides: string[];
 	    config?: Config;
 	
 	    static createFrom(source: any = {}) {
@@ -193,6 +220,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.patchPath = source["patchPath"];
 	        this.dictionary = source["dictionary"];
+	        this.overrides = source["overrides"];
 	        this.config = this.convertValues(source["config"], Config);
 	    }
 	

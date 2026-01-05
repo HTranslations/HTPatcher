@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 )
 
 func OpenPatch(path string) (*zip.ReadCloser, error) {
@@ -46,6 +47,33 @@ func ReadDictionary(r *zip.ReadCloser) (map[string]string, error) {
 
 func ReadConfig(r *zip.ReadCloser) (*Config, error) {
 	return readJSONFromZip[Config](r, "config.json")
+}
+
+// Overrides are any files in the overrides folder, recursively
+func GetAllOverrides(r *zip.ReadCloser) ([]string, error) {
+	overrides := []string{}
+	for _, f := range r.File {
+		if strings.HasPrefix(f.Name, "overrides/") && f.Mode().IsRegular() {
+			overrides = append(overrides, strings.TrimPrefix(f.Name, "overrides/"))
+		}
+	}
+	return overrides, nil
+}
+
+// Reads a file
+func ReadFileFromZip(r *zip.ReadCloser, path string) ([]byte, error) {
+	path = strings.ReplaceAll(path, "\\", "/")
+	for _, f := range r.File {
+		if f.Name == path {
+			rc, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+	}
+	return nil, errors.New("file " + path + " not found")
 }
 
 type Config struct {

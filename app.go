@@ -10,13 +10,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx            context.Context
+	persistentData *PersistentData
 }
 
 // NewApp creates a new App application struct
@@ -28,6 +30,13 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	runtime.WindowMaximise(a.ctx)
+	persistentData, err := GetPersistentData()
+	if err != nil {
+		a.LogError("Failed to get persistent data")
+		return
+	}
+	a.persistentData = persistentData
 }
 
 type GameInfo struct {
@@ -42,11 +51,15 @@ type GameInfo struct {
 type PatchInfo struct {
 	PatchPath  string            `json:"patchPath"`
 	Dictionary map[string]string `json:"dictionary"`
+	Overrides  []string          `json:"overrides"`
 	Config     *Config           `json:"config"`
 }
 
 type PatchEntry struct {
 	Title           string `json:"title"`
+	RJCode          string `json:"rjCode"`
+	StoreLink       string `json:"storeLink"`
+	ReleaseDate     string `json:"releaseDate"`
 	SystemGameTitle string `json:"systemGameTitle"`
 	PatchDownloadId string `json:"patchDownloadId"`
 }
@@ -54,7 +67,6 @@ type PatchEntry struct {
 var version = 8
 
 func (a *App) SelectGameExeFile() (*GameInfo, error) {
-	gameInfo := GameInfo{}
 	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select the Game.exe file",
 		Filters: []runtime.FileFilter{
@@ -67,6 +79,16 @@ func (a *App) SelectGameExeFile() (*GameInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return a.getGameInfoFromExePath(filePath)
+}
+
+func (a *App) GetGameInfoFromExePath(exePath string) (*GameInfo, error) {
+	return a.getGameInfoFromExePath(exePath)
+}
+
+func (a *App) getGameInfoFromExePath(filePath string) (*GameInfo, error) {
+	gameInfo := GameInfo{}
 
 	// Set game paths
 	gameInfo.ExePath = filePath
@@ -149,10 +171,6 @@ func LoadPatchInfo(a *App, filePath string) (*PatchInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	patchInfo.Dictionary, err = ReadDictionary(r)
-	if err != nil {
-		return nil, err
-	}
 
 	// Set config
 	patchInfo.Config, err = ReadConfig(r)
@@ -166,6 +184,16 @@ func LoadPatchInfo(a *App, filePath string) (*PatchInfo, error) {
 		a.LogError("You can download the latest version from the website.")
 		a.LogError("https://htranslations.com")
 		return nil, errors.New("patch version is not supported")
+	}
+
+	patchInfo.Dictionary, err = ReadDictionary(r)
+	if err != nil {
+		return nil, err
+	}
+
+	patchInfo.Overrides, err = GetAllOverrides(r)
+	if err != nil {
+		return nil, err
 	}
 
 	return patchInfo, nil
@@ -235,7 +263,15 @@ func (a *App) FetchAllPatches() ([]PatchEntry, error) {
 	return patches, nil
 }
 
-func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo, launchAfterPatch bool) error {
+func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo, launchAfterPatch bool, backupBeforePatch bool) error {
+	if backupBeforePatch {
+		a.Log("Backing up game data...")
+		err := BackupGameData(a, gameInfo, patchInfo)
+		if err != nil {
+			a.LogError("Failed to backup game data")
+			return err
+		}
+	}
 	a.Log("Starting patch application...")
 
 	// list json files in data folder
@@ -271,6 +307,29 @@ func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo, launchAfterPatc
 				a.LogError("Failed to apply plugin replace rule")
 				return err
 			}
+		}
+	}
+
+	// Apply overrides
+	if len(patchInfo.Overrides) > 0 {
+		r, err := OpenPatch(patchInfo.PatchPath)
+		if err != nil {
+			a.LogError("Failed to open patch")
+			return err
+		}
+		defer r.Close()
+		for _, override := range patchInfo.Overrides {
+			data, err := ReadFileFromZip(r, filepath.Join("overrides", override))
+			if err != nil {
+				a.LogError("Failed to read override")
+				return err
+			}
+			err = os.WriteFile(filepath.Join(gameInfo.GameDir, override), data, 0644)
+			if err != nil {
+				a.LogError("Failed to write override")
+				return err
+			}
+			a.Log(fmt.Sprintf("Overwritten file %s", override))
 		}
 	}
 
@@ -333,5 +392,35 @@ func LaunchGame(exePath string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (a *App) LaunchGameFromPath(exePath string) error {
+	return LaunchGame(exePath)
+}
+
+func (a *App) OpenFolder(folderPath string) error {
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", folderPath)
+	case "darwin":
+		cmd = exec.Command("open", folderPath)
+	case "linux":
+		cmd = exec.Command("xdg-open", folderPath)
+	default:
+		return errors.New("unsupported operating system")
+	}
+	return cmd.Start()
+}
+
+func (a *App) RestoreGameBackup(gameInfo GameInfo) error {
+	a.Log("Starting backup restoration...")
+	err := RestoreBackup(a, gameInfo)
+	if err != nil {
+		a.LogError("Failed to restore backup")
+		return err
+	}
+	a.LogSuccess("✓ Backup restored successfully!")
 	return nil
 }
