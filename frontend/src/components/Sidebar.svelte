@@ -1,8 +1,21 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { GetCurrentVersion } from "../../wailsjs/go/main/App.js";
+
   export let currentPage: "games" | "patches" | "settings" | "request-translation";
   export let selectedCategory: string;
   export let categories: Array<{ id: string; name: string; count: number }>;
   export let playStatusCategories: Array<{ id: string; name: string; count: number }> = [];
+
+  let currentVersion = 0;
+
+  onMount(async () => {
+    try {
+      currentVersion = await GetCurrentVersion();
+    } catch (error) {
+      console.error("Failed to get current version:", error);
+    }
+  });
 
   function getStatusDotColor(id: string): string {
     switch (id) {
@@ -21,8 +34,8 @@
   }
 </script>
 
-<div class="w-64 bg-zinc-900 border-r border-zinc-800 overflow-y-auto text-left">
-  <div class="p-4">
+<div class="w-64 bg-zinc-900 border-r border-zinc-800 overflow-y-auto text-left flex flex-col">
+  <div class="p-4 flex-1">
     <div class="mb-6">
       <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">
         Navigation
@@ -101,5 +114,10 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- Version at bottom -->
+  <div class="p-4 border-t border-zinc-800">
+    <span class="text-xs text-zinc-500">v{currentVersion}</span>
   </div>
 </div>

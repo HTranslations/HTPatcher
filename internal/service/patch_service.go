@@ -88,8 +88,6 @@ func (s *PatchService) LoadPatchInfo(filePath string) (*domain.PatchInfo, error)
 	if patchInfo.Config.Version > Version {
 		s.logger.Error(fmt.Sprintf("Patch version %d is not supported.", patchInfo.Config.Version))
 		s.logger.Error("Please update the patcher to the latest version.")
-		s.logger.Error("You can download the latest version from the website.")
-		s.logger.Error("https://htranslations.com")
 		return nil, errors.New("patch version is not supported")
 	}
 
