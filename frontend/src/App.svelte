@@ -1,289 +1,719 @@
 <script lang="ts">
   import "./app.css";
-  import { main } from "../wailsjs/go/models.js";
-  import { EventsOn, BrowserOpenURL } from "../wailsjs/runtime/runtime.js";
   import { onMount } from "svelte";
-
+  import { domain } from "../wailsjs/go/models.js";
   import {
-    ApplyPatch,
-    SelectGameExeFile,
-    SelectPatchFile,
+    PrepareGameToAddToCollection,
+    AddGameToCollection,
+    GetGamesCollection,
+    LaunchGameFromPath,
+    OpenFolder,
     FetchAllPatches,
+    RemoveGameFromCollection,
+    SelectGameExeFile,
+    GetGameInfoFromExePath,
+    SelectPatchFile,
     DownloadPatch,
+    ApplyPatch,
+    SetGameTranslated,
+    SetGamePinned,
+    SetGamePlayStatus,
+    RestoreGameBackup,
+    GetPersistentDataPath,
+    DeletePersistentData,
+    UpdateGameMetadata,
+    GetGamesPerRow,
+    SetGamesPerRow,
+    CheckForUpdate,
+    GetCurrentVersion,
+    ExportPatchedFiles,
   } from "../wailsjs/go/main/App.js";
+  import { EventsOn } from "../wailsjs/runtime/runtime.js";
 
-  interface LogMessage {
+  import Header from "./components/Header.svelte";
+  import Sidebar from "./components/Sidebar.svelte";
+  import GamesPage from "./components/GamesPage.svelte";
+  import PatchesPage from "./components/PatchesPage.svelte";
+  import SettingsPage from "./components/SettingsPage.svelte";
+  import RequestTranslationPage from "./components/RequestTranslationPage.svelte";
+  import AddGameDialog from "./components/AddGameDialog.svelte";
+  import ConfirmDialog from "./components/ConfirmDialog.svelte";
+  import TranslateGameDrawer from "./components/TranslateGameDrawer.svelte";
+  import RestoreBackupDrawer from "./components/RestoreBackupDrawer.svelte";
+  import EditGameDrawer from "./components/EditGameDrawer.svelte";
+  import UpdateDialog from "./components/UpdateDialog.svelte";
+  import { getDlsiteImageUrl } from "./lib/utils.js";
+
+  let games: domain.LocatedGame[] = [];
+  let patches: domain.PatchEntry[] = [];
+  let currentPage: "games" | "patches" | "settings" | "request-translation" =
+    "games";
+  let selectedCategory = "all";
+  let searchQuery = "";
+  let showAddDialog = false;
+  let locatedGame: domain.LocatedGame | null = null;
+  let rjCode = "";
+  let friendlyName = "";
+  let tags = "";
+  let previewImageUrl = "";
+  let previewImageLoaded = false;
+  let showDeleteDialog = false;
+  let gameToDelete: domain.LocatedGame | null = null;
+  let showDeleteDataDialog = false;
+  let dataPath = "";
+
+  // Translate game drawer state
+  let showTranslateDrawer = false;
+  let translateGameInfo: domain.GameInfo | null = null;
+  let translatePatchInfo: domain.PatchInfo | null = null;
+  let translateLogs: Array<{
     message: string;
     type: "info" | "success" | "error";
-  }
-
-  let gameInfo: main.GameInfo | null = null;
-  let patchInfo: main.PatchInfo | null = null;
-  let logs: LogMessage[] = [];
+  }> = [];
   let isPatching = false;
   let launchAfterPatch = true;
-  let logContainer: HTMLDivElement;
+  let selectedPatch: domain.PatchEntry | null = null;
+  let patchSearchQuery = "";
+  let currentTranslatingGame: domain.LocatedGame | null = null;
 
-  onMount(() => {
-    EventsOn("log", (logMessage: LogMessage) => {
-      logs = [...logs, logMessage];
-      setTimeout(() => {
-        if (logContainer) {
-          logContainer.scrollTop = logContainer.scrollHeight;
+  // Restore backup drawer state
+  let showRestoreDrawer = false;
+  let restoreGameInfo: domain.GameInfo | null = null;
+  let restoreLogs: Array<{
+    message: string;
+    type: "info" | "success" | "error";
+  }> = [];
+  let isRestoring = false;
+  let currentRestoringGame: domain.LocatedGame | null = null;
+
+  // Edit game drawer state
+  let showEditDrawer = false;
+  let gameToEdit: domain.LocatedGame | null = null;
+
+  // Update dialog state
+  let showUpdateDialog = false;
+  let updateReleaseInfo: domain.ReleaseInfo | null = null;
+
+  // Update success toast state
+  let showUpdateSuccessToast = false;
+  let updatedToVersion = 0;
+
+  // Settings
+  let gamesPerRow = 3;
+
+  async function loadGames() {
+    try {
+      games = await GetGamesCollection();
+    } catch (error) {
+      console.error("Failed to load games:", error);
+      games = [];
+    }
+  }
+
+  async function loadPatches() {
+    try {
+      patches = await FetchAllPatches();
+    } catch (error) {
+      console.error("Failed to load patches:", error);
+      patches = [];
+    }
+  }
+
+  onMount(async () => {
+    loadGames();
+    loadPatches();
+
+    // Load data path
+    try {
+      dataPath = await GetPersistentDataPath();
+    } catch (error) {
+      console.error("Failed to get data path:", error);
+    }
+
+    // Load games per row setting
+    try {
+      gamesPerRow = await GetGamesPerRow();
+    } catch (error) {
+      console.error("Failed to get games per row:", error);
+      gamesPerRow = 3;
+    }
+
+    // Check for updates
+    try {
+      const releaseInfo = await CheckForUpdate();
+      if (releaseInfo) {
+        updateReleaseInfo = releaseInfo;
+        showUpdateDialog = true;
+      }
+    } catch (error) {
+      console.error("Failed to check for updates:", error);
+    }
+
+    // Listen for log events
+    EventsOn(
+      "log",
+      (logMessage: { message: string; type: "info" | "success" | "error" }) => {
+        if (showTranslateDrawer) {
+          translateLogs = [...translateLogs, logMessage];
+        } else if (showRestoreDrawer) {
+          restoreLogs = [...restoreLogs, logMessage];
         }
-      }, 0);
+      },
+    );
+
+    // Listen for update success event
+    EventsOn("app:updated", (version: number) => {
+      updatedToVersion = version;
+      showUpdateSuccessToast = true;
     });
   });
 
-  let patches: main.PatchEntry[] = [];
-  let patchSearchQuery = "";
-  let selectedPatch: main.PatchEntry | null = null;
+  $: categories = [
+    { id: "all", name: "All Games", count: games.length },
+    {
+      id: "patched",
+      name: "Patched",
+      count: games.filter((g) => g.translated).length,
+    },
+    {
+      id: "not-patched",
+      name: "Not Patched",
+      count: games.filter((g) => !g.translated).length,
+    },
+  ];
 
-  onMount(async () => {
-    patches = await FetchAllPatches();
-  });
+  $: playStatusCategories = [
+    {
+      id: "unplayed",
+      name: "Unplayed",
+      count: games.filter((g) => !g.playStatus || g.playStatus === "unplayed").length,
+    },
+    {
+      id: "playing",
+      name: "Playing",
+      count: games.filter((g) => g.playStatus === "playing").length,
+    },
+    {
+      id: "on-hold",
+      name: "On Hold",
+      count: games.filter((g) => g.playStatus === "on-hold").length,
+    },
+    {
+      id: "finished",
+      name: "Finished",
+      count: games.filter((g) => g.playStatus === "finished").length,
+    },
+    {
+      id: "given-up",
+      name: "Given Up",
+      count: games.filter((g) => g.playStatus === "given-up").length,
+    },
+  ];
 
-  $: filteredPatches = (() => {
-    const query = patchSearchQuery.toLowerCase();
-    return patches.filter(
-      (patch) =>
-        patch.title.toLowerCase().includes(query) ||
-        patch.systemGameTitle.toLowerCase().includes(query)
-    )
-    // Sort patches by game title match
-    .sort((a, b) => {
-      if (a.systemGameTitle === gameInfo?.gameTitle && b.systemGameTitle !== gameInfo?.gameTitle) return -1;
-      if (a.systemGameTitle !== gameInfo?.gameTitle && b.systemGameTitle === gameInfo?.gameTitle) return 1;
+  $: filteredGames = (() => {
+    let filtered = games;
+
+    // Apply category filter
+    if (selectedCategory === "patched") {
+      filtered = filtered.filter((g) => g.translated);
+    } else if (selectedCategory === "not-patched") {
+      filtered = filtered.filter((g) => !g.translated);
+    } else if (selectedCategory === "unplayed") {
+      filtered = filtered.filter((g) => !g.playStatus || g.playStatus === "unplayed");
+    } else if (selectedCategory === "playing") {
+      filtered = filtered.filter((g) => g.playStatus === "playing");
+    } else if (selectedCategory === "on-hold") {
+      filtered = filtered.filter((g) => g.playStatus === "on-hold");
+    } else if (selectedCategory === "finished") {
+      filtered = filtered.filter((g) => g.playStatus === "finished");
+    } else if (selectedCategory === "given-up") {
+      filtered = filtered.filter((g) => g.playStatus === "given-up");
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((g) => {
+        const friendlyNameMatch = g.friendlyName?.toLowerCase().includes(query);
+        const rjCodeMatch = g.rjCode?.toLowerCase().includes(query);
+        const tagsMatch = g.tags?.some((tag) =>
+          tag.toLowerCase().includes(query),
+        );
+        return friendlyNameMatch || rjCodeMatch || tagsMatch;
+      });
+    }
+
+    // Sort pinned games first (stable sort preserves original order)
+    return [...filtered].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
       return 0;
     });
   })();
 
-  async function selectGameExeFile(): Promise<void> {
-    gameInfo = await SelectGameExeFile();
-    selectedPatch ??= patches.find(patch => patch.systemGameTitle === gameInfo.gameTitle);
+  $: {
+    const newUrl = rjCode ? getDlsiteImageUrl(rjCode) : "";
+    if (newUrl !== previewImageUrl) {
+      previewImageLoaded = false;
+    }
+    previewImageUrl = newUrl;
   }
 
-  function togglePatch(patch: main.PatchEntry): void {
+  function locateGame(game: domain.LocatedGame) {
+    // Placeholder for file selection
+    console.log("Locate game:", game);
+  }
+
+  async function openGame(game: domain.LocatedGame) {
+    if (!game.exePath) return;
+
+    try {
+      const gameInfo = await GetGameInfoFromExePath(game.exePath);
+      if (!gameInfo) return;
+
+      if (game.translated) {
+        // Show restore backup drawer
+        restoreGameInfo = gameInfo;
+        currentRestoringGame = game;
+        restoreLogs = [];
+        showRestoreDrawer = true;
+      } else {
+        // Show translate drawer
+        translateGameInfo = gameInfo;
+        currentTranslatingGame = game;
+        // Try to find a matching patch
+        selectedPatch =
+          patches.find(
+            (patch) => patch.systemGameTitle === gameInfo.gameTitle,
+          ) || null;
+        translateLogs = [];
+        translatePatchInfo = null;
+        patchSearchQuery = "";
+        showTranslateDrawer = true;
+      }
+    } catch (error) {
+      console.error("Failed to get game info:", error);
+    }
+  }
+
+  function closeTranslateDrawer() {
+    showTranslateDrawer = false;
+    translateGameInfo = null;
+    translatePatchInfo = null;
+    selectedPatch = null;
+    translateLogs = [];
+    patchSearchQuery = "";
+    currentTranslatingGame = null;
+  }
+
+  function closeRestoreDrawer() {
+    showRestoreDrawer = false;
+    restoreGameInfo = null;
+    restoreLogs = [];
+    currentRestoringGame = null;
+  }
+
+  async function selectPatchFile() {
+    try {
+      translatePatchInfo = await SelectPatchFile();
+      selectedPatch = null;
+    } catch (error) {
+      console.error("Failed to select patch file:", error);
+    }
+  }
+
+  function togglePatch(patch: domain.PatchEntry) {
     if (selectedPatch === patch) {
       selectedPatch = null;
     } else {
       selectedPatch = patch;
-      patchInfo = null;
+      translatePatchInfo = null;
     }
   }
 
-  async function selectPatchFile(): Promise<void> {
-    patchInfo = await SelectPatchFile();
-    selectedPatch = null;
+  function clearCustomPatch() {
+    translatePatchInfo = null;
   }
 
-  function clearCustomPatch(): void {
-    patchInfo = null;
-  }
+  async function applyPatch() {
+    if (!translateGameInfo || !(translatePatchInfo || selectedPatch)) return;
 
-  async function applyPatch(): Promise<void> {
-    logs = [];
+    translateLogs = [];
     isPatching = true;
+
     try {
       if (selectedPatch) {
-        patchInfo = await DownloadPatch(selectedPatch.patchDownloadId);
+        translatePatchInfo = await DownloadPatch(selectedPatch.patchDownloadId);
       }
-      await ApplyPatch(gameInfo, patchInfo, launchAfterPatch);
+
+      if (translatePatchInfo && currentTranslatingGame) {
+        await ApplyPatch(
+          translateGameInfo,
+          translatePatchInfo,
+          launchAfterPatch,
+          true,
+        );
+        await SetGameTranslated(currentTranslatingGame.id, true);
+        await loadGames();
+      }
     } catch (error) {
-      logs = [...logs, { message: `Error: ${error}`, type: "error" }];
+      translateLogs = [
+        ...translateLogs,
+        { message: `Error: ${error}`, type: "error" },
+      ];
     } finally {
       isPatching = false;
     }
   }
 
-  function openLink(url: string): void {
-    BrowserOpenURL(url);
+  async function restoreBackup() {
+    if (!restoreGameInfo || !currentRestoringGame) return;
+
+    restoreLogs = [];
+    isRestoring = true;
+
+    try {
+      await RestoreGameBackup(restoreGameInfo);
+      await SetGameTranslated(currentRestoringGame.id, false);
+      await loadGames();
+    } catch (error) {
+      restoreLogs = [
+        ...restoreLogs,
+        { message: `Error: ${error}`, type: "error" },
+      ];
+    } finally {
+      isRestoring = false;
+    }
+  }
+
+  async function launchGame(game: domain.LocatedGame) {
+    if (game.exePath) {
+      try {
+        await LaunchGameFromPath(game.exePath);
+      } catch (error) {
+        console.error("Failed to launch game:", error);
+      }
+    }
+  }
+
+  async function openGameFolder(game: domain.LocatedGame) {
+    const folderPath = game.exePath ? game.gameDir : game.gameDir;
+    if (folderPath) {
+      try {
+        await OpenFolder(folderPath);
+      } catch (error) {
+        console.error("Failed to open folder:", error);
+      }
+    }
+  }
+
+  async function addGame() {
+    try {
+      const game = await PrepareGameToAddToCollection();
+      locatedGame = game;
+      rjCode = "";
+      friendlyName = "";
+      tags = "";
+      previewImageUrl = "";
+      previewImageLoaded = false;
+      showAddDialog = true;
+    } catch (error) {
+      console.error("Failed to prepare game:", error);
+    }
+  }
+
+  function closeAddDialog() {
+    showAddDialog = false;
+    locatedGame = null;
+    rjCode = "";
+    friendlyName = "";
+    tags = "";
+    previewImageUrl = "";
+    previewImageLoaded = false;
+  }
+
+  function handlePreviewImageLoad() {
+    previewImageLoaded = true;
+  }
+
+  function handlePreviewImageError() {
+    previewImageLoaded = false;
+  }
+
+  function handleRjCodeInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    let value = target.value.toUpperCase();
+    // Remove any non-alphanumeric characters except RJ prefix
+    value = value.replace(/[^RJ0-9]/g, "");
+    // Ensure it starts with RJ
+    if (value && !value.startsWith("RJ")) {
+      value = "RJ" + value.replace(/RJ/g, "");
+    }
+    // Limit to reasonable length (RJ + 8 digits max)
+    if (value.length > 10) {
+      value = value.substring(0, 10);
+    }
+    rjCode = value;
+  }
+
+  function handleFriendlyNameInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    friendlyName = target.value;
+  }
+
+  function handleTagsInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    tags = target.value;
+  }
+
+  async function addGameToCollection() {
+    if (!locatedGame || !rjCode || !friendlyName) return;
+
+    try {
+      // Parse tags from comma-separated string
+      const tagArray = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
+      await AddGameToCollection(locatedGame, rjCode, friendlyName, tagArray);
+      await loadGames();
+      closeAddDialog();
+    } catch (error) {
+      console.error("Failed to add game to collection:", error);
+    }
+  }
+
+  function requestDeleteGame(game: domain.LocatedGame) {
+    gameToDelete = game;
+    showDeleteDialog = true;
+  }
+
+  function cancelDelete() {
+    showDeleteDialog = false;
+    gameToDelete = null;
+  }
+
+  async function confirmDelete() {
+    if (!gameToDelete || !gameToDelete.id) return;
+
+    try {
+      await RemoveGameFromCollection(gameToDelete.id);
+      await loadGames();
+      cancelDelete();
+    } catch (error) {
+      console.error("Failed to delete game:", error);
+    }
+  }
+
+  function requestDeleteData() {
+    showDeleteDataDialog = true;
+  }
+
+  function cancelDeleteData() {
+    showDeleteDataDialog = false;
+  }
+
+  async function confirmDeleteData() {
+    try {
+      await DeletePersistentData();
+      await loadGames();
+      cancelDeleteData();
+    } catch (error) {
+      console.error("Failed to delete data:", error);
+    }
+  }
+
+  function openEditDrawer(game: domain.LocatedGame) {
+    gameToEdit = game;
+    showEditDrawer = true;
+  }
+
+  function closeEditDrawer() {
+    showEditDrawer = false;
+    gameToEdit = null;
+  }
+
+  async function saveGameEdit(friendlyName: string, tags: string[], playStatus: string) {
+    if (!gameToEdit || !gameToEdit.id) return;
+
+    try {
+      await UpdateGameMetadata(gameToEdit.id, friendlyName, tags);
+      await SetGamePlayStatus(gameToEdit.id, playStatus);
+      await loadGames();
+      closeEditDrawer();
+    } catch (error) {
+      console.error("Failed to update game metadata:", error);
+    }
+  }
+
+  async function exportPatchedFiles(game: domain.LocatedGame) {
+    if (!game.gameDir) return;
+
+    try {
+      await ExportPatchedFiles(game.gameDir, game.friendlyName || game.rjCode || "game");
+    } catch (error) {
+      console.error("Failed to export patched files:", error);
+    }
+  }
+
+  async function handleGamesPerRowChange(count: number) {
+    try {
+      await SetGamesPerRow(count);
+      gamesPerRow = count;
+    } catch (error) {
+      console.error("Failed to set games per row:", error);
+    }
+  }
+
+  async function togglePinGame(game: domain.LocatedGame) {
+    try {
+      await SetGamePinned(game.id, !game.pinned);
+      await loadGames();
+    } catch (error) {
+      console.error("Failed to toggle pin:", error);
+    }
+  }
+
+  function closeUpdateDialog() {
+    showUpdateDialog = false;
+    updateReleaseInfo = null;
+  }
+
+  function closeUpdateSuccessToast() {
+    showUpdateSuccessToast = false;
   }
 </script>
 
-<div class="flex flex-col h-screen bg-zinc-900 text-zinc-100">
-  <!-- Header -->
-  <div class="bg-zinc-950 border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
-    <h1 class="text-lg font-semibold tracking-tight">HTranslations Patcher</h1>
-    
-    <div class="flex items-center gap-4">
-      <button
-        onclick={() => openLink('https://htranslations.com')}
-        class="text-sm text-zinc-400 transition-colors cursor-pointer"
-      >
-        Website
-      </button>
-      <button
-        onclick={() => openLink('https://discord.gg/sKXZDn72cr')}
-        class="text-sm text-zinc-400 transition-colors cursor-pointer"
-      >
-        Discord
-      </button>
-      <button
-        onclick={() => openLink('https://ko-fi.com/htranslations')}
-        class="text-sm text-emerald-400 transition-colors font-medium cursor-pointer"
-      >
-        Support Us
-      </button>
-    </div>
-  </div>
+<div class="flex flex-col h-screen bg-zinc-950 text-zinc-100">
+  <Header />
 
-  <!-- Main Content - Two Column Layout -->
-  <div class="flex-1 flex overflow-hidden">
-    <!-- Left Column - Controls -->
-    <div class="flex flex-col w-1/2 border-r border-zinc-800">
-      <div class="flex-1 flex flex-col gap-6 p-6 overflow-y-auto">
-        <!-- Game Selection Section -->
-        <div class="flex flex-col gap-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-zinc-400 uppercase tracking-wide"
-              >Game Executable</span
-            >
-            {#if gameInfo}
-              <span class="text-xs text-emerald-400">✓ Selected</span>
-            {/if}
-          </div>
+  <!-- Main Content -->
+  <div class="flex flex-1 overflow-hidden">
+    <Sidebar bind:currentPage bind:selectedCategory {categories} {playStatusCategories} />
 
-          {#if gameInfo}
-            <div class="bg-zinc-800 border border-zinc-700 px-4 py-3">
-              <p class="text-sm text-zinc-300 font-mono truncate">
-                {gameInfo.exePath}
-              </p>
-            </div>
-          {:else}
-            <div class="bg-zinc-800 border border-zinc-700 px-4 py-3">
-              <p class="text-sm text-zinc-500 italic">No file selected</p>
-            </div>
-          {/if}
-
-          <button
-            onclick={selectGameExeFile}
-            class="bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 border border-zinc-700 px-4 py-3 text-sm font-medium transition-colors duration-150"
-          >
-            {gameInfo ? "Change Game.exe" : "Select Game.exe"}
-          </button>
-        </div>
-
-        <!-- Patch Selection Section -->
-          <div class="flex flex-col gap-3 relative">
-            <div class="flex items-center justify-between">
-              <span
-                class="text-sm font-medium text-zinc-400 uppercase tracking-wide"
-                >Patch File</span
-              >
-              <div class="flex items-center gap-2">
-                {#if patchInfo}
-                  <span class="text-xs text-emerald-400">✓ Selected</span>
-                {/if}
-              </div>
-            </div>
-            {#if patchInfo && !selectedPatch}
-              <!-- Custom File Selected -->
-              <div class="bg-zinc-800 border border-zinc-700 px-4 py-3 flex items-center justify-between">
-                <p class="text-sm text-zinc-300 font-mono truncate flex-1">
-                  {patchInfo.patchPath}
-                </p>
-                <button
-                  type="button"
-                  onclick={clearCustomPatch}
-                  class="ml-3 text-zinc-400 hover:text-zinc-300 transition-colors"
-                  title="Clear custom patch file"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            {:else}
-              <!-- Patches List -->
-              <div class="text-sm text-zinc-500 text-left">
-                Search for patches or select a .htpatch file manually.
-              </div>
-              <!-- Autocomplete Input -->
-              <div class="relative">
-                <div class="flex items-center gap-2">
-                  <input
-                    type="text"
-                    bind:value={patchSearchQuery}
-                    placeholder="Search patches..."
-                    class="flex-1 bg-zinc-800 border border-zinc-700 px-4 py-3 text-sm text-zinc-300 focus:outline-none focus:ring-0 focus-visible:outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onclick={selectPatchFile}
-                    class="bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 border border-zinc-700 px-3 py-3 text-zinc-300 transition-colors duration-150 flex items-center justify-center"
-                    title="Select patch file"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                    </svg>
-                  </button>
-                </div>
-                {#if filteredPatches.length > 0}
-                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 max-h-38 overflow-y-auto">
-                    {#each filteredPatches as patch}
-                      <button
-                        type="button"
-                        onmousedown={() => togglePatch(patch)}
-                        class="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors flex items-center justify-between relative {selectedPatch === patch ? 'border-2 border-emerald-500' : 'border-b border-zinc-700 last:border-b-0'}"
-                      >
-                        {#if selectedPatch === patch}
-                          <span class="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-1.5 py-0.5">✓</span>
-                        {/if}
-                        <div class="flex-1">
-                          <div class="font-medium">{patch.title}</div>
-                          {#if patch.systemGameTitle}
-                            <div class="text-xs text-zinc-500 mt-1">{patch.systemGameTitle}</div>
-                          {/if}
-                        </div>
-                      </button>
-                    {/each}
-                  </div>
-                {:else}
-                  <div class="absolute z-50 w-full mt-3 bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-500">
-                    No patches found
-                  </div>
-                {/if}
-              </div>
-            {/if}
-          </div>
-      </div>
-
-      <!-- Footer Action -->
-        <div class="border-t border-zinc-800 p-6 flex flex-col gap-3">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              bind:checked={launchAfterPatch}
-              class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
-            />
-            <span class="text-sm text-zinc-400">
-              Launch game after patching
-            </span>
-          </label>
-          <button
-            onclick={applyPatch}
-            disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch)}
-            class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:bg-zinc-700 disabled:cursor-not-allowed px-4 py-4 text-sm font-semibold uppercase tracking-wide transition-colors duration-150"
-          >
-            {isPatching ? "Applying Patch..." : gameInfo && (patchInfo || selectedPatch) ? "Apply Patch" : "Select Game.exe and Patch File"}
-          </button>
-        </div>
-    </div>
-
-    <!-- Right Column - Logs -->
-    <div class="flex flex-col w-1/2">
-      <div
-        bind:this={logContainer}
-        class="flex-1 bg-black px-5 pb-5 pt-4 overflow-y-auto font-mono text-xs text-left"
-      >
-          {#each logs as log}
-            <div class="py-0.5 {log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-emerald-400' : 'text-zinc-300'}">
-              <span class="text-zinc-600">›</span>
-              {log.message}
-            </div>
-          {/each}
+    <!-- Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="p-6">
+        {#if currentPage === "games"}
+          <GamesPage
+            games={filteredGames}
+            {searchQuery}
+            {gamesPerRow}
+            onAddGame={addGame}
+            onOpenFolder={openGameFolder}
+            onLaunchGame={launchGame}
+            onLocateGame={locateGame}
+            onTranslateGame={openGame}
+            onEditGame={openEditDrawer}
+            onPinGame={togglePinGame}
+            onSearchQueryChange={(query) => (searchQuery = query)}
+            onGamesPerRowChange={handleGamesPerRowChange}
+          />
+        {:else if currentPage === "patches"}
+          <PatchesPage {patches} />
+        {:else if currentPage === "settings"}
+          <SettingsPage {dataPath} onDeleteData={requestDeleteData} />
+        {:else if currentPage === "request-translation"}
+          <RequestTranslationPage />
+        {/if}
       </div>
     </div>
   </div>
+
+  <AddGameDialog
+    show={showAddDialog}
+    {locatedGame}
+    bind:rjCode
+    bind:friendlyName
+    bind:tags
+    {previewImageUrl}
+    {previewImageLoaded}
+    onClose={closeAddDialog}
+    onRjCodeInput={handleRjCodeInput}
+    onFriendlyNameInput={handleFriendlyNameInput}
+    onTagsInput={handleTagsInput}
+    onPreviewImageLoad={handlePreviewImageLoad}
+    onPreviewImageError={handlePreviewImageError}
+    onAddGame={addGameToCollection}
+  />
+
+  <ConfirmDialog
+    show={showDeleteDialog}
+    title="Delete Game"
+    message="Are you sure you want to remove this game from your collection? This won't delete the game from your disk."
+    confirmText="Delete"
+    cancelText="Cancel"
+    onConfirm={confirmDelete}
+    onCancel={cancelDelete}
+  />
+
+  <ConfirmDialog
+    show={showDeleteDataDialog}
+    title="Delete All Data"
+    message="Are you sure you want to delete all your persistent data? This will remove all games from your collection and cannot be undone."
+    confirmText="Delete All Data"
+    cancelText="Cancel"
+    onConfirm={confirmDeleteData}
+    onCancel={cancelDeleteData}
+  />
+
+  <TranslateGameDrawer
+    show={showTranslateDrawer}
+    gameInfo={translateGameInfo}
+    {patches}
+    logs={translateLogs}
+    {isPatching}
+    bind:launchAfterPatch
+    {selectedPatch}
+    patchInfo={translatePatchInfo}
+    bind:patchSearchQuery
+    onClose={closeTranslateDrawer}
+    onSelectPatchFile={selectPatchFile}
+    onTogglePatch={togglePatch}
+    onClearCustomPatch={clearCustomPatch}
+    onApplyPatch={applyPatch}
+    onLaunchAfterPatchChange={(value) => (launchAfterPatch = value)}
+    onPatchSearchQueryChange={(value) => (patchSearchQuery = value)}
+  />
+
+  <RestoreBackupDrawer
+    show={showRestoreDrawer}
+    gameInfo={restoreGameInfo}
+    logs={restoreLogs}
+    {isRestoring}
+    onClose={closeRestoreDrawer}
+    onRestoreBackup={restoreBackup}
+  />
+
+  <EditGameDrawer
+    show={showEditDrawer}
+    game={gameToEdit}
+    onClose={closeEditDrawer}
+    onSave={saveGameEdit}
+    onDelete={requestDeleteGame}
+    onExport={exportPatchedFiles}
+  />
+
+  <UpdateDialog
+    show={showUpdateDialog}
+    releaseInfo={updateReleaseInfo}
+    onClose={closeUpdateDialog}
+  />
+
+  <!-- Update Success Toast -->
+  {#if showUpdateSuccessToast}
+    <div class="fixed bottom-4 right-4 z-50 bg-green-600 border border-green-500 text-white px-4 py-3 shadow-lg flex items-center gap-3">
+      <span>Successfully updated to v{updatedToVersion}!</span>
+      <button
+        onclick={closeUpdateSuccessToast}
+        class="text-white/80 hover:text-white cursor-pointer"
+        aria-label="Close notification"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  {/if}
 </div>
