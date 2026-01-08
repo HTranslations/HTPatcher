@@ -1,21 +1,19 @@
 <script lang="ts">
-  import { main } from "../../wailsjs/go/models.js";
-  import { EventsOn } from "../../wailsjs/runtime/runtime.js";
-  import { onMount, onDestroy } from "svelte";
+  import { domain } from "../../wailsjs/go/models.js";
   
   export let show: boolean;
-  export let gameInfo: main.GameInfo | null;
-  export let patches: main.PatchEntry[];
+  export let gameInfo: domain.GameInfo | null;
+  export let patches: domain.PatchEntry[];
   export let logs: Array<{ message: string; type: "info" | "success" | "error" }>;
   export let isPatching: boolean;
   export let launchAfterPatch: boolean;
-  export let selectedPatch: main.PatchEntry | null;
-  export let patchInfo: main.PatchInfo | null;
+  export let selectedPatch: domain.PatchEntry | null;
+  export let patchInfo: domain.PatchInfo | null;
   export let patchSearchQuery: string;
   
   export let onClose: () => void;
   export let onSelectPatchFile: () => void;
-  export let onTogglePatch: (patch: main.PatchEntry) => void;
+  export let onTogglePatch: (patch: domain.PatchEntry) => void;
   export let onClearCustomPatch: () => void;
   export let onApplyPatch: () => void;
   export let onLaunchAfterPatchChange: (value: boolean) => void;
@@ -23,6 +21,7 @@
   
   let logContainer: HTMLDivElement;
   let previousLogsLength = 0;
+  let patchSuccess = false;
   
   $: filteredPatches = (() => {
     const query = patchSearchQuery.toLowerCase();
@@ -49,8 +48,19 @@
           }, 0);
         }
         previousLogsLength = logs.length;
+        
+        // Check if patching was successful
+        const lastLog = logs[logs.length - 1];
+        if (!isPatching && lastLog.type === "success" && lastLog.message.includes("✓")) {
+          patchSuccess = true;
+        }
       }
     }
+  }
+  
+  // Reset success state when drawer is shown
+  $: if (show) {
+    patchSuccess = false;
   }
 </script>
 
@@ -223,10 +233,10 @@
           </label>
           <button
             onclick={onApplyPatch}
-            disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch)}
+            disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch) || patchSuccess}
             class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold uppercase tracking-wide transition-colors"
           >
-            {isPatching ? "Applying Patch..." : gameInfo && (patchInfo || selectedPatch) ? "Apply Patch" : "Select Patch File"}
+            {patchSuccess ? "Patch Applied Successfully" : isPatching ? "Applying Patch..." : gameInfo && (patchInfo || selectedPatch) ? "Apply Patch" : "Select Patch File"}
           </button>
         </div>
       </div>

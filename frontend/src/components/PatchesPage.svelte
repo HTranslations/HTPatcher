@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { main } from "../../wailsjs/go/models.js";
+  import { domain } from "../../wailsjs/go/models.js";
   import PageHeader from "./PageHeader.svelte";
   import PatchCard from "./PatchCard.svelte";
   
-  export let patches: main.PatchEntry[];
+  export let patches: domain.PatchEntry[];
 </script>
 
 <PageHeader

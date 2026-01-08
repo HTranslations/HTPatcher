@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { main } from "../../wailsjs/go/models.js";
+  import { domain } from "../../wailsjs/go/models.js";
   import { BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
   import { getDlsiteImageUrl } from "../lib/utils.js";
   
-  export let patch: main.PatchEntry;
+  export let patch: domain.PatchEntry;
   export let index: number;
 </script>
 

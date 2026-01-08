@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { main } from "../../wailsjs/go/models.js";
+  import { domain } from "../../wailsjs/go/models.js";
   
   export let show: boolean;
-  export let gameInfo: main.GameInfo | null;
+  export let gameInfo: domain.GameInfo | null;
   export let logs: Array<{ message: string; type: "info" | "success" | "error" }>;
   export let isRestoring: boolean;
   
@@ -11,6 +11,7 @@
   
   let logContainer: HTMLDivElement;
   let previousLogsLength = 0;
+  let restoreSuccess = false;
   
   $: {
     if (logContainer && logs.length > 0) {
@@ -23,8 +24,19 @@
           }, 0);
         }
         previousLogsLength = logs.length;
+        
+        // Check if restore was successful
+        const lastLog = logs[logs.length - 1];
+        if (!isRestoring && lastLog.type === "success" && lastLog.message.includes("✓")) {
+          restoreSuccess = true;
+        }
       }
     }
+  }
+  
+  // Reset success state when drawer is shown
+  $: if (show) {
+    restoreSuccess = false;
   }
 </script>
 
@@ -81,14 +93,14 @@
           </div>
 
           <!-- Info Section -->
-          <div class="bg-blue-900/20 border border-blue-700/50 px-4 py-3 text-left">
+          <div class="bg-orange-900/20 border border-orange-700/50 px-4 py-3 text-left">
             <div class="flex items-start gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
               </svg>
               <div class="flex-1">
-                <p class="text-sm text-blue-200 font-medium mb-1">Restore Backup</p>
-                <p class="text-sm text-blue-300/90">
+                <p class="text-sm text-orange-200 font-medium mb-1">Restore Backup</p>
+                <p class="text-sm text-orange-300/90">
                   This will restore the game to its original state before translation. 
                   All translated files will be replaced with the backed-up originals.
                 </p>
@@ -116,10 +128,10 @@
         <div class="border-t border-zinc-800 p-6 flex flex-col gap-3 flex-shrink-0">
           <button
             onclick={onRestoreBackup}
-            disabled={isRestoring || !gameInfo}
-            class="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold uppercase tracking-wide transition-colors"
+            disabled={isRestoring || !gameInfo || restoreSuccess}
+            class="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-700 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold uppercase tracking-wide transition-colors"
           >
-            {isRestoring ? "Restoring Backup..." : gameInfo ? "Restore Backup" : "No Game Selected"}
+            {restoreSuccess ? "Backup Restored Successfully" : isRestoring ? "Restoring Backup..." : gameInfo ? "Restore Backup" : "No Game Selected"}
           </button>
         </div>
       </div>

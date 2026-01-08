@@ -27,12 +27,12 @@ jobs:
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Extract version from app.go
+      - name: Extract version from version.go
         id: version
         shell: pwsh
         run: |
-          $content = Get-Content -Path "app.go" -Raw
-          if ($content -match 'var version = (\d+)') {
+          $content = Get-Content -Path "internal/service/version.go" -Raw
+          if ($content -match 'const Version = (\d+)') {
             $version = $matches[1]
             echo "VERSION=$version" >> $env:GITHUB_OUTPUT
             echo "TAG=v$version" >> $env:GITHUB_OUTPUT

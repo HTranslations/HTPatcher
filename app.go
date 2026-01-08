@@ -2,23 +2,26 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
+	"htpatcher/internal/domain"
+	"htpatcher/internal/repository"
+	"htpatcher/internal/service"
 	"os"
-	"os/exec"
-	"path/filepath"
-	goruntime "runtime"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx            context.Context
-	persistentData *PersistentData
+	ctx               context.Context
+	gameService       *service.GameService
+	patchService      *service.PatchService
+	backupService     *service.BackupService
+	collectionService *service.CollectionService
+	downloadService   *service.DownloadService
+	updateService     *service.UpdateService
+	exportService     *service.ExportService
+	justUpdated       bool
 }
 
 // NewApp creates a new App application struct
@@ -26,184 +29,72 @@ func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
+// startup is called when the app starts
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	runtime.WindowMaximise(a.ctx)
-	persistentData, err := GetPersistentData()
+
+	// Emit update success event if just updated
+	if a.justUpdated {
+		runtime.EventsEmit(a.ctx, "app:updated", service.Version)
+	}
+
+	// Initialize logger
+	logger := &AppLogger{ctx: ctx}
+
+	// Initialize repositories
+	patchRepo := repository.NewPatchRepository()
+	storageRepo := repository.NewStorageRepository()
+
+	// Initialize services
+	a.gameService = service.NewGameService(logger)
+	a.patchService = service.NewPatchService(patchRepo, logger)
+	a.backupService = service.NewBackupService(logger)
+	a.downloadService = service.NewDownloadService(patchRepo, logger)
+	a.updateService = service.NewUpdateService(logger)
+	a.exportService = service.NewExportService(logger)
+
+	collectionService, err := service.NewCollectionService(storageRepo)
 	if err != nil {
-		a.LogError("Failed to get persistent data")
+		a.LogError("Failed to initialize collection service")
 		return
 	}
-	a.persistentData = persistentData
+	a.collectionService = collectionService
 }
 
-type GameInfo struct {
-	GameDir   string `json:"gameDir"`
-	ExePath   string `json:"exePath"`
-	DataPath  string `json:"dataPath"`
-	JsPath    string `json:"jsPath"`
-	ImgPath   string `json:"imgPath"`
-	GameTitle string `json:"gameTitle"`
+// AppLogger implements the Logger interface for services
+type AppLogger struct {
+	ctx context.Context
 }
 
-type PatchInfo struct {
-	PatchPath  string            `json:"patchPath"`
-	Dictionary map[string]string `json:"dictionary"`
-	Overrides  []string          `json:"overrides"`
-	Config     *Config           `json:"config"`
-}
-
-type PatchEntry struct {
-	Title           string `json:"title"`
-	RJCode          string `json:"rjCode"`
-	StoreLink       string `json:"storeLink"`
-	ReleaseDate     string `json:"releaseDate"`
-	SystemGameTitle string `json:"systemGameTitle"`
-	PatchDownloadId string `json:"patchDownloadId"`
-}
-
-var version = 8
-
-func (a *App) SelectGameExeFile() (*GameInfo, error) {
-	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select the Game.exe file",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "Game.exe",
-				Pattern:     "*.exe",
-			},
-		},
+func (l *AppLogger) Info(message string) {
+	runtime.EventsEmit(l.ctx, "log", LogMessage{
+		Message: message,
+		Type:    "info",
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return a.getGameInfoFromExePath(filePath)
 }
 
-func (a *App) GetGameInfoFromExePath(exePath string) (*GameInfo, error) {
-	return a.getGameInfoFromExePath(exePath)
-}
-
-func (a *App) getGameInfoFromExePath(filePath string) (*GameInfo, error) {
-	gameInfo := GameInfo{}
-
-	// Set game paths
-	gameInfo.ExePath = filePath
-	gameInfo.GameDir = filepath.Dir(filePath)
-	a.Log(fmt.Sprintf("Game directory: %s", gameInfo.GameDir))
-
-	// Set data and js paths
-	dataPath := filepath.Join(gameInfo.GameDir, "data")
-	imgPath := filepath.Join(gameInfo.GameDir, "img")
-	jsPath := filepath.Join(gameInfo.GameDir, "js")
-	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
-		dataPath = filepath.Join(gameInfo.GameDir, "www", "data")
-		imgPath = filepath.Join(gameInfo.GameDir, "www", "img")
-		jsPath = filepath.Join(gameInfo.GameDir, "www", "js")
-	}
-
-	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
-		a.LogError("Data directory not found")
-		return nil, errors.New("data directory not found")
-	}
-	if _, err := os.Stat(jsPath); os.IsNotExist(err) {
-		a.LogError("JS directory not found")
-		return nil, errors.New("js directory not found")
-	}
-	if _, err := os.Stat(imgPath); os.IsNotExist(err) {
-		a.LogError("IMG directory not found")
-		return nil, errors.New("img directory not found")
-	}
-
-	gameInfo.DataPath = dataPath
-	gameInfo.JsPath = jsPath
-	gameInfo.ImgPath = imgPath
-
-	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
-	if err != nil {
-		a.LogError("Failed to read system.json")
-		return nil, err
-	}
-
-	var systemInfo System
-	if err := json.Unmarshal(systemInfoData, &systemInfo); err != nil {
-		a.LogError("Failed to parse system.json")
-		return nil, err
-	}
-
-	gameInfo.GameTitle = systemInfo.GameTitle
-	a.Log(fmt.Sprintf("Game title: \"%s\"", gameInfo.GameTitle))
-
-	return &gameInfo, nil
-}
-
-func (a *App) SelectPatchFile() (*PatchInfo, error) {
-	filePath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select the Patch file",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "Patch file",
-				Pattern:     "*.htpatch",
-			},
-		},
+func (l *AppLogger) Success(message string) {
+	runtime.EventsEmit(l.ctx, "log", LogMessage{
+		Message: message,
+		Type:    "success",
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	patchInfo, err := LoadPatchInfo(a, filePath)
-	if err != nil {
-		return nil, err
-	}
-	return patchInfo, nil
 }
 
-func LoadPatchInfo(a *App, filePath string) (*PatchInfo, error) {
-	patchInfo := &PatchInfo{
-		PatchPath: filePath,
-	}
-
-	// Set dictionary
-	r, err := OpenPatch(patchInfo.PatchPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set config
-	patchInfo.Config, err = ReadConfig(r)
-	if err != nil {
-		return nil, err
-	}
-
-	if patchInfo.Config.Version > version {
-		a.LogError(fmt.Sprintf("Patch version %d is not supported.", patchInfo.Config.Version))
-		a.LogError("Please update the patcher to the latest version.")
-		a.LogError("You can download the latest version from the website.")
-		a.LogError("https://htranslations.com")
-		return nil, errors.New("patch version is not supported")
-	}
-
-	patchInfo.Dictionary, err = ReadDictionary(r)
-	if err != nil {
-		return nil, err
-	}
-
-	patchInfo.Overrides, err = GetAllOverrides(r)
-	if err != nil {
-		return nil, err
-	}
-
-	return patchInfo, nil
+func (l *AppLogger) Error(message string) {
+	runtime.EventsEmit(l.ctx, "log", LogMessage{
+		Message: message,
+		Type:    "error",
+	})
 }
 
+// LogMessage represents a log message sent to the frontend
 type LogMessage struct {
 	Message string `json:"message"`
 	Type    string `json:"type"` // "info", "success", "error"
 }
 
+// Log logs an info message
 func (a *App) Log(message string) {
 	runtime.EventsEmit(a.ctx, "log", LogMessage{
 		Message: message,
@@ -211,6 +102,7 @@ func (a *App) Log(message string) {
 	})
 }
 
+// LogSuccess logs a success message
 func (a *App) LogSuccess(message string) {
 	runtime.EventsEmit(a.ctx, "log", LogMessage{
 		Message: message,
@@ -218,6 +110,7 @@ func (a *App) LogSuccess(message string) {
 	})
 }
 
+// LogError logs an error message
 func (a *App) LogError(message string) {
 	runtime.EventsEmit(a.ctx, "log", LogMessage{
 		Message: message,
@@ -225,202 +118,197 @@ func (a *App) LogError(message string) {
 	})
 }
 
-func (a *App) DownloadPatch(patchDownloadId string) (*PatchInfo, error) {
-	a.Log(fmt.Sprintf("Downloading patch with download ID %s", patchDownloadId))
-	filePath, err := DownloadPatch(patchDownloadId)
-	if err != nil {
-		return nil, err
-	}
+// ===== Game Service Methods =====
 
-	a.Log(fmt.Sprintf("Downloaded patch to %s", filePath))
-	a.Log("Loading patch into memory...")
-
-	patchInfo, err := LoadPatchInfo(a, filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	os.Remove(filePath)
-	a.Log(fmt.Sprintf("Removed %s", filePath))
-
-	return patchInfo, nil
+// SelectGameExeFile opens a dialog to select a game executable
+func (a *App) SelectGameExeFile() (*domain.GameInfo, error) {
+	return a.gameService.SelectGameExeFile(a.ctx)
 }
 
-func (a *App) FetchAllPatches() ([]PatchEntry, error) {
-	response, err := http.Get("https://htranslations.com/api/patches")
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-	var patches []PatchEntry
-	if err := json.Unmarshal(body, &patches); err != nil {
-		return nil, err
-	}
-	return patches, nil
+// GetGameInfoFromExePath gets game info from an executable path
+func (a *App) GetGameInfoFromExePath(exePath string) (*domain.GameInfo, error) {
+	return a.gameService.GetGameInfoFromExePath(exePath)
 }
 
-func (a *App) ApplyPatch(gameInfo GameInfo, patchInfo PatchInfo, launchAfterPatch bool, backupBeforePatch bool) error {
+// LaunchGameFromPath launches a game from its path
+func (a *App) LaunchGameFromPath(exePath string) error {
+	return a.gameService.LaunchGame(exePath)
+}
+
+// OpenFolder opens a folder in the file explorer
+func (a *App) OpenFolder(folderPath string) error {
+	return a.gameService.OpenFolder(folderPath)
+}
+
+// ===== Patch Service Methods =====
+
+// SelectPatchFile opens a dialog to select a patch file
+func (a *App) SelectPatchFile() (*domain.PatchInfo, error) {
+	return a.patchService.SelectPatchFile(a.ctx)
+}
+
+// FetchAllPatches fetches all available patches
+func (a *App) FetchAllPatches() ([]domain.PatchEntry, error) {
+	return a.patchService.FetchAllPatches()
+}
+
+// ApplyPatch applies a patch to a game
+func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, launchAfterPatch bool, backupBeforePatch bool) error {
 	if backupBeforePatch {
 		a.Log("Backing up game data...")
-		err := BackupGameData(a, gameInfo, patchInfo)
+		err := a.backupService.BackupGameData(&gameInfo, &patchInfo)
 		if err != nil {
 			a.LogError("Failed to backup game data")
 			return err
 		}
 	}
-	a.Log("Starting patch application...")
 
-	// list json files in data folder
-	a.Log("Scanning data folder for JSON files...")
-	jsonFiles, err := filepath.Glob(filepath.Join(gameInfo.DataPath, "*.json"))
+	err := a.patchService.ApplyPatch(a.ctx, &gameInfo, &patchInfo)
 	if err != nil {
-		a.LogError("Failed to scan data folder")
 		return err
 	}
-	a.Log(fmt.Sprintf("Found %d JSON files to patch", len(jsonFiles)))
-
-	for _, jsonFile := range jsonFiles {
-		err = PatchDataFile(a.ctx, jsonFile, patchInfo)
-		if err != nil {
-			a.LogError("Error patching file: " + filepath.Base(jsonFile))
-			return err
-		}
-	}
-
-	// Patch plugins.js
-	pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
-	err = UpdatePluginsJs(a.ctx, pluginsJsPath, patchInfo.Config.PluginsToPatch, patchInfo.Dictionary)
-	if err != nil {
-		a.LogError("Failed to update plugins.js")
-		return err
-	}
-
-	// Apply replace rules
-	for _, pluginToPatch := range patchInfo.Config.PluginsToPatch {
-		for _, replaceRule := range pluginToPatch.ReplaceRules {
-			err = ApplyReplaceRule(a.ctx, gameInfo.JsPath, pluginToPatch.Plugin, replaceRule)
-			if err != nil {
-				a.LogError("Failed to apply plugin replace rule")
-				return err
-			}
-		}
-	}
-
-	// Apply overrides
-	if len(patchInfo.Overrides) > 0 {
-		r, err := OpenPatch(patchInfo.PatchPath)
-		if err != nil {
-			a.LogError("Failed to open patch")
-			return err
-		}
-		defer r.Close()
-		for _, override := range patchInfo.Overrides {
-			data, err := ReadFileFromZip(r, filepath.Join("overrides", override))
-			if err != nil {
-				a.LogError("Failed to read override")
-				return err
-			}
-			err = os.WriteFile(filepath.Join(gameInfo.GameDir, override), data, 0644)
-			if err != nil {
-				a.LogError("Failed to write override")
-				return err
-			}
-			a.Log(fmt.Sprintf("Overwritten file %s", override))
-		}
-	}
-
-	a.Log("Reading system information...")
-	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
-	if err != nil {
-		a.LogError("Failed to read system.json")
-		return err
-	}
-
-	var systemInfo System
-	if err := json.Unmarshal(systemInfoData, &systemInfo); err != nil {
-		a.LogError("Failed to parse system.json")
-		return err
-	}
-
-	a.Log("Looking for main screen image...")
-	mainScreenImageName := systemInfo.Title1Name
-	pngPath := filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png")
-	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".rpgmvp")
-	}
-	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png_")
-	}
-	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		a.LogError("Main screen image not found")
-		return errors.New("main screen image not found")
-	}
-
-	if patchInfo.Config.CreditsLocation == "" {
-		patchInfo.Config.CreditsLocation = "bottom_left"
-	}
-
-	a.Log("Adding credits to main screen image...")
-	err = AddCreditsToResource(pngPath, systemInfo.EncryptionKey, patchInfo.Config.CreditsLocation)
-	if err != nil {
-		a.LogError("Failed to add credits")
-		return err
-	}
-
-	a.LogSuccess("✓ Patch applied successfully!")
 
 	if launchAfterPatch {
 		a.Log("Launching game...")
-		err = LaunchGame(gameInfo.ExePath)
-		a.Log("Game launched successfully!")
+		err = a.gameService.LaunchGame(gameInfo.ExePath)
 		if err != nil {
 			a.LogError("Failed to launch game")
 			return err
 		}
+		a.Log("Game launched successfully!")
 	}
+
 	return nil
 }
 
-func LaunchGame(exePath string) error {
-	cmd := exec.Command(exePath)
-	cmd.Dir = filepath.Dir(exePath)
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	return nil
+// ===== Download Service Methods =====
+
+// DownloadPatch downloads a patch
+func (a *App) DownloadPatch(patchDownloadId string) (*domain.PatchInfo, error) {
+	return a.downloadService.DownloadPatch(patchDownloadId, func(filePath string) (*domain.PatchInfo, error) {
+		patchInfo, err := a.patchService.LoadPatchInfo(filePath)
+		if err != nil {
+			return nil, err
+		}
+		// Clean up temp file
+		os.Remove(filePath)
+		a.Log(fmt.Sprintf("Removed %s", filePath))
+		return patchInfo, nil
+	})
 }
 
-func (a *App) LaunchGameFromPath(exePath string) error {
-	return LaunchGame(exePath)
-}
+// ===== Backup Service Methods =====
 
-func (a *App) OpenFolder(folderPath string) error {
-	var cmd *exec.Cmd
-	switch goruntime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", folderPath)
-	case "darwin":
-		cmd = exec.Command("open", folderPath)
-	case "linux":
-		cmd = exec.Command("xdg-open", folderPath)
-	default:
-		return errors.New("unsupported operating system")
-	}
-	return cmd.Start()
-}
-
-func (a *App) RestoreGameBackup(gameInfo GameInfo) error {
+// RestoreGameBackup restores a game backup
+func (a *App) RestoreGameBackup(gameInfo domain.GameInfo) error {
 	a.Log("Starting backup restoration...")
-	err := RestoreBackup(a, gameInfo)
+	err := a.backupService.RestoreBackup(&gameInfo)
 	if err != nil {
 		a.LogError("Failed to restore backup")
 		return err
 	}
 	a.LogSuccess("✓ Backup restored successfully!")
 	return nil
+}
+
+// ===== Collection Service Methods =====
+
+// PrepareGameToAddToCollection prepares a game to be added to the collection
+func (a *App) PrepareGameToAddToCollection() (*domain.LocatedGame, error) {
+	return a.collectionService.PrepareGameToAddToCollection(a.ctx)
+}
+
+// AddGameToCollection adds a game to the collection
+func (a *App) AddGameToCollection(locatedGame *domain.LocatedGame, rjCode string, friendlyName string, tags []string) error {
+	return a.collectionService.AddGameToCollection(locatedGame, rjCode, friendlyName, tags)
+}
+
+// GetGamesCollection returns all games in the collection
+func (a *App) GetGamesCollection() ([]domain.LocatedGame, error) {
+	return a.collectionService.GetGamesCollection()
+}
+
+// SetGameTranslated marks a game as translated
+func (a *App) SetGameTranslated(id string, isTranslated bool) error {
+	return a.collectionService.SetGameTranslated(id, isTranslated)
+}
+
+// RemoveGameFromCollection removes a game from the collection
+func (a *App) RemoveGameFromCollection(id string) error {
+	return a.collectionService.RemoveGameFromCollection(id)
+}
+
+// GetPersistentDataPath returns the path to the persistent data file
+func (a *App) GetPersistentDataPath() (string, error) {
+	return a.collectionService.GetDataPath()
+}
+
+// DeletePersistentData deletes the persistent data file
+func (a *App) DeletePersistentData() error {
+	err := a.collectionService.DeleteData()
+	if err != nil {
+		return err
+	}
+	// Reload the collection service with empty data
+	a.collectionService, err = service.NewCollectionService(repository.NewStorageRepository())
+	return err
+}
+
+// UpdateGameMetadata updates the friendly name and tags for a game
+func (a *App) UpdateGameMetadata(gameId string, friendlyName string, tags []string) error {
+	return a.collectionService.UpdateGameMetadata(gameId, friendlyName, tags)
+}
+
+// GetGamesPerRow returns the games per row setting
+func (a *App) GetGamesPerRow() int {
+	return a.collectionService.GetGamesPerRow()
+}
+
+// SetGamesPerRow sets the games per row setting
+func (a *App) SetGamesPerRow(count int) error {
+	return a.collectionService.SetGamesPerRow(count)
+}
+
+// SetGamePinned sets the pinned status of a game
+func (a *App) SetGamePinned(id string, pinned bool) error {
+	return a.collectionService.SetGamePinned(id, pinned)
+}
+
+// SetGamePlayStatus sets the play status of a game
+func (a *App) SetGamePlayStatus(id string, status string) error {
+	return a.collectionService.SetGamePlayStatus(id, status)
+}
+
+// ===== Update Service Methods =====
+
+// CheckForUpdate checks if there's a new version available
+func (a *App) CheckForUpdate() (*domain.ReleaseInfo, error) {
+	return a.updateService.GetNewReleaseInfo()
+}
+
+// GetCurrentVersion returns the current application version
+func (a *App) GetCurrentVersion() int {
+	return a.updateService.GetCurrentVersion()
+}
+
+// GetLatestReleaseInfo returns the latest release information from GitHub
+func (a *App) GetLatestReleaseInfo() (*domain.ReleaseInfo, error) {
+	return a.updateService.GetLatestReleaseInfo()
+}
+
+// DownloadUpdate downloads the new version to cache
+func (a *App) DownloadUpdate(releaseInfo *domain.ReleaseInfo) error {
+	return a.updateService.DownloadUpdate(releaseInfo)
+}
+
+// ApplyUpdate applies the downloaded update and restarts the app
+func (a *App) ApplyUpdate() error {
+	return a.updateService.ApplyUpdate()
+}
+
+// ===== Export Service Methods =====
+
+// ExportPatchedFiles exports patched files to a ZIP archive
+func (a *App) ExportPatchedFiles(gameDir string, friendlyName string) error {
+	return a.exportService.ExportPatchedFiles(a.ctx, gameDir, friendlyName)
 }

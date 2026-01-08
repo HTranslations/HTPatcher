@@ -1,15 +1,19 @@
 <script lang="ts">
-  import { main } from "../../wailsjs/go/models.js";
+  import { domain } from "../../wailsjs/go/models.js";
   import { getDlsiteImageUrl } from "../lib/utils.js";
   
   export let show: boolean;
-  export let locatedGame: main.LocatedGame | null;
+  export let locatedGame: domain.LocatedGame | null;
   export let rjCode: string;
+  export let friendlyName: string;
+  export let tags: string;
   export let previewImageUrl: string;
   export let previewImageLoaded: boolean;
   
   export let onClose: () => void;
   export let onRjCodeInput: (event: Event) => void;
+  export let onFriendlyNameInput: (event: Event) => void;
+  export let onTagsInput: (event: Event) => void;
   export let onPreviewImageLoad: () => void;
   export let onPreviewImageError: () => void;
   export let onAddGame: () => void;
@@ -69,10 +73,25 @@
             </div>
           </div>
 
+          <!-- Friendly Name Input -->
+          <div>
+            <label for="friendly-name-input" class="block text-sm font-medium text-zinc-400 mb-2">
+              Friendly Name <span class="text-red-400">*</span>
+            </label>
+            <input
+              id="friendly-name-input"
+              type="text"
+              value={friendlyName}
+              oninput={onFriendlyNameInput}
+              placeholder="My Favorite Game"
+              class="w-full bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-zinc-600"
+            />
+          </div>
+
           <!-- RJ Code Input -->
           <div>
             <label for="rj-code-input" class="block text-sm font-medium text-zinc-400 mb-2">
-              RJ Code
+              RJ Code <span class="text-red-400">*</span>
             </label>
             <input
               id="rj-code-input"
@@ -82,6 +101,22 @@
               placeholder="RJ00000000"
               class="w-full bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:border-zinc-600"
             />
+          </div>
+
+          <!-- Tags Input -->
+          <div>
+            <label for="tags-input" class="block text-sm font-medium text-zinc-400 mb-2">
+              Tags <span class="text-zinc-500">(optional)</span>
+            </label>
+            <input
+              id="tags-input"
+              type="text"
+              value={tags}
+              oninput={onTagsInput}
+              placeholder="RPG, Fantasy, Action (comma-separated)"
+              class="w-full bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 focus:outline-none focus:border-zinc-600"
+            />
+            <p class="text-xs text-zinc-500 mt-1">Separate tags with commas</p>
           </div>
 
           <!-- Preview Image -->
@@ -128,7 +163,7 @@
             </button>
             <button
               onclick={onAddGame}
-              disabled={!rjCode || rjCode.length < 3}
+              disabled={!rjCode || rjCode.length < 3 || !friendlyName || friendlyName.trim().length === 0}
               class="px-4 py-2 text-sm bg-emerald-600 text-white disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed"
             >
               Add Game
