@@ -282,5 +282,13 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 	}
 
 	s.logger.Success("✓ Patch applied successfully!")
+
+	// Clean up downloaded patch file if it's in temp directory
+	tempDir := os.TempDir()
+	if filepath.HasPrefix(patchInfo.PatchPath, tempDir) {
+		os.Remove(patchInfo.PatchPath)
+		s.logger.Info(fmt.Sprintf("Cleaned up temp file: %s", filepath.Base(patchInfo.PatchPath)))
+	}
+
 	return nil
 }

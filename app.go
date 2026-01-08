@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"htpatcher/internal/domain"
 	"htpatcher/internal/repository"
 	"htpatcher/internal/service"
-	"os"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -190,9 +188,8 @@ func (a *App) DownloadPatch(patchDownloadId string) (*domain.PatchInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Clean up temp file
-		os.Remove(filePath)
-		a.Log(fmt.Sprintf("Removed %s", filePath))
+		// Don't remove the file here - it's needed for extracting overrides during ApplyPatch
+		// The file will be cleaned up at the end of ApplyPatch
 		return patchInfo, nil
 	})
 }
