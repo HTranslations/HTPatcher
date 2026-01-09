@@ -90,6 +90,13 @@ func patchParameterValue(value any, dictionary map[string]string) any {
 			result[key] = patchParameterValue(val, dictionary)
 		}
 		return result
+	case *util.OrderedMap:
+		// Recursive case: process ordered map properties while preserving key order
+		result := util.NewOrderedMap()
+		for _, key := range v.Keys {
+			result.Set(key, patchParameterValue(v.Values[key], dictionary))
+		}
+		return result
 	default:
 		// Other types (numbers, booleans, null): return as-is
 		return v
@@ -248,7 +255,3 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 
 	return newCommands, nil
 }
-
-
-
-

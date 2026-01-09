@@ -23,7 +23,7 @@ func patchActors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, actors)
+	return json.Marshal(actors)
 }
 
 // patchArmors patches armor data
@@ -45,7 +45,7 @@ func patchArmors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, armors)
+	return json.Marshal(armors)
 }
 
 // patchClasses patches class data
@@ -67,7 +67,7 @@ func patchClasses(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, classes)
+	return json.Marshal(classes)
 }
 
 // patchCommonEvents patches common event data
@@ -88,7 +88,7 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 		commonEvent.List = newCommands
 	}
 
-	return util.MergeJsonChanges(data, commonEvents)
+	return json.Marshal(commonEvents)
 }
 
 // patchEnemies patches enemy data
@@ -110,7 +110,7 @@ func patchEnemies(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, enemies)
+	return json.Marshal(enemies)
 }
 
 // patchItems patches item data
@@ -135,7 +135,7 @@ func patchItems(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, items)
+	return json.Marshal(items)
 }
 
 // patchMap patches map data
@@ -162,7 +162,7 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, mapData)
+	return json.Marshal(mapData)
 }
 
 // patchSkills patches skill data
@@ -190,7 +190,7 @@ func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, skills)
+	return json.Marshal(skills)
 }
 
 // patchStates patches state data
@@ -221,7 +221,7 @@ func patchStates(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, states)
+	return json.Marshal(states)
 }
 
 // patchSystem patches system data
@@ -358,7 +358,7 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	patchTermMessage(&system.Terms.Messages.BuffRemove, patchInfo.Dictionary)
 	patchTermMessage(&system.Terms.Messages.ActionFailure, patchInfo.Dictionary)
 
-	return util.MergeJsonChanges(data, system)
+	return json.Marshal(system)
 }
 
 // patchTermMessage is a helper to patch a single term message
@@ -391,7 +391,7 @@ func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, troops)
+	return json.Marshal(troops)
 }
 
 // patchWeapons patches weapon data
@@ -413,9 +413,5 @@ func patchWeapons(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 	}
 
-	return util.MergeJsonChanges(data, weapons)
+	return json.Marshal(weapons)
 }
-
-
-
-
