@@ -231,6 +231,11 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	// Set locale if specified in patch config
+	if patchInfo.Config != nil && patchInfo.Config.Locale != "" {
+		system.Locale = patchInfo.Config.Locale
+	}
+
 	// Patch armor types
 	for i := range system.ArmorTypes {
 		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.ArmorTypes[i])]; ok {

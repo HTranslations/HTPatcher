@@ -19,6 +19,7 @@ type Config struct {
 	PluginsToPatch    []PluginToPatch    `json:"pluginsToPatch"`
 	CreditsLocation   string             `json:"creditsLocation"`
 	DynamicWrapWidth  bool               `json:"dynamicWrapWidth"`
+	Locale            string             `json:"locale"`
 }
 
 // PluginToPatch defines how to patch a specific plugin
@@ -55,7 +56,3 @@ type PluginData struct {
 	Status      bool            `json:"status"`
 	Parameters  json.RawMessage `json:"parameters"`
 }
-
-
-
-

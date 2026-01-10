@@ -210,6 +210,7 @@ export namespace domain {
 	    pluginsToPatch: PluginToPatch[];
 	    creditsLocation: string;
 	    dynamicWrapWidth: boolean;
+	    locale: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -224,6 +225,7 @@ export namespace domain {
 	        this.pluginsToPatch = this.convertValues(source["pluginsToPatch"], PluginToPatch);
 	        this.creditsLocation = source["creditsLocation"];
 	        this.dynamicWrapWidth = source["dynamicWrapWidth"];
+	        this.locale = source["locale"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
