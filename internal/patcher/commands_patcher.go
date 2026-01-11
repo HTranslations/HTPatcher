@@ -151,7 +151,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 
 			translationKey := util.GetTranslationKey(fullText)
 			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
-				dialogueCommands[0].Parameters[0] = util.Wrap(translation+"aaaaaaaaaaaaa aaaaaaaaaaaaaaa aaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaa aaaaaaaaaaaaaaa aaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaa aaaaaaaaaaaaaaa aaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaa aaaaaaaaaaaaaaa aaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaa aaaaaaaaaaaaaaa aaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaa aaaaaaaaaaaaaaa aaaaaaaaaaaa aaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaa ", wrapWidth)
+				dialogueCommands[0].Parameters[0] = util.Wrap(translation, wrapWidth)
 				// Only keep the first command in the dialogue
 				for k := (commandIndex - len(dialogueCommands) + 2); k <= commandIndex; k++ {
 					commandsToDelete = append(commandsToDelete, k)
