@@ -19,6 +19,7 @@ type Logger interface {
 	Info(message string)
 	Success(message string)
 	Error(message string)
+	Warn(message string)
 }
 
 // NewEngine creates a new patcher engine
@@ -114,7 +115,3 @@ func getDataFileTypeMap(filePath string) string {
 func (e *Engine) PatchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInfo) ([]*rpgmaker.EventCommand, error) {
 	return patchCommands(commands, patchInfo)
 }
-
-
-
-

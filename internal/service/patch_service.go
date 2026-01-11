@@ -170,8 +170,8 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 
 	// Apply replace rules
 	for _, pluginToPatch := range patchInfo.Config.PluginsToPatch {
-		for _, replaceRule := range pluginToPatch.ReplaceRules {
-			err = s.pluginPatcher.ApplyReplaceRule(ctx, gameInfo.JsPath, pluginToPatch.Plugin, replaceRule)
+		for i, replaceRule := range pluginToPatch.ReplaceRules {
+			err = s.pluginPatcher.ApplyReplaceRule(ctx, gameInfo.JsPath, pluginToPatch.Plugin, replaceRule, i+1)
 			if err != nil {
 				s.logger.Error("Failed to apply plugin replace rule")
 				return err

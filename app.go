@@ -86,10 +86,17 @@ func (l *AppLogger) Error(message string) {
 	})
 }
 
+func (l *AppLogger) Warn(message string) {
+	runtime.EventsEmit(l.ctx, "log", LogMessage{
+		Message: message,
+		Type:    "warning",
+	})
+}
+
 // LogMessage represents a log message sent to the frontend
 type LogMessage struct {
 	Message string `json:"message"`
-	Type    string `json:"type"` // "info", "success", "error"
+	Type    string `json:"type"` // "info", "success", "error", "warning"
 }
 
 // Log logs an info message

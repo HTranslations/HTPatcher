@@ -68,7 +68,7 @@
   let translatePatchInfo: domain.PatchInfo | null = null;
   let translateLogs: Array<{
     message: string;
-    type: "info" | "success" | "error";
+    type: "info" | "success" | "error" | "warning";
   }> = [];
   let isPatching = false;
   let launchAfterPatch = true;
@@ -81,7 +81,7 @@
   let restoreGameInfo: domain.GameInfo | null = null;
   let restoreLogs: Array<{
     message: string;
-    type: "info" | "success" | "error";
+    type: "info" | "success" | "error" | "warning";
   }> = [];
   let isRestoring = false;
   let currentRestoringGame: domain.LocatedGame | null = null;
@@ -152,7 +152,7 @@
     // Listen for log events
     EventsOn(
       "log",
-      (logMessage: { message: string; type: "info" | "success" | "error" }) => {
+      (logMessage: { message: string; type: "info" | "success" | "error" | "warning" }) => {
         if (showTranslateDrawer) {
           translateLogs = [...translateLogs, logMessage];
         } else if (showRestoreDrawer) {

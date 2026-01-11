@@ -3,7 +3,7 @@
   
   export let show: boolean;
   export let gameInfo: domain.GameInfo | null;
-  export let logs: Array<{ message: string; type: "info" | "success" | "error" }>;
+  export let logs: Array<{ message: string; type: "info" | "success" | "error" | "warning" }>;
   export let isRestoring: boolean;
   
   export let onClose: () => void;
@@ -116,7 +116,7 @@
             class="flex-1 bg-black px-5 py-4 overflow-y-scroll font-mono text-xs text-left"
           >
             {#each logs as log}
-              <div class="py-0.5 {log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-emerald-400' : 'text-zinc-300'}">
+              <div class="py-0.5 {log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-emerald-400' : log.type === 'warning' ? 'text-amber-400' : 'text-zinc-300'}">
                 <span class="text-zinc-600">›</span>
                 {log.message}
               </div>

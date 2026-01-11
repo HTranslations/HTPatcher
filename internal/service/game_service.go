@@ -24,6 +24,7 @@ type Logger interface {
 	Info(message string)
 	Success(message string)
 	Error(message string)
+	Warn(message string)
 }
 
 // NewGameService creates a new game service
@@ -113,7 +114,3 @@ func (s *GameService) LaunchGame(exePath string) error {
 func (s *GameService) OpenFolder(folderPath string) error {
 	return util.OpenFolder(folderPath)
 }
-
-
-
-

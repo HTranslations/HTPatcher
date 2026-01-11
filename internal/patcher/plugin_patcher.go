@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"htpatcher/internal/domain"
 	"htpatcher/internal/util"
 	"os"
@@ -24,7 +25,7 @@ func NewPluginPatcher(logger Logger) *PluginPatcher {
 }
 
 // ApplyReplaceRule applies a replace rule to a plugin file
-func (p *PluginPatcher) ApplyReplaceRule(ctx context.Context, jsPath string, pluginName string, replaceRule domain.PluginReplaceRule) error {
+func (p *PluginPatcher) ApplyReplaceRule(ctx context.Context, jsPath string, pluginName string, replaceRule domain.PluginReplaceRule, ruleIndex int) error {
 	p.logger.Info("Applying replace rule on plugin " + pluginName)
 
 	pluginPath := filepath.Join(jsPath, "plugins", pluginName+".js")
@@ -33,7 +34,17 @@ func (p *PluginPatcher) ApplyReplaceRule(ctx context.Context, jsPath string, plu
 		return err
 	}
 
-	patchedData := bytes.ReplaceAll(data, []byte(replaceRule.Match), []byte(replaceRule.Replace))
+	// Normalize line endings by removing \r for cross-platform compatibility
+	normalizedData := bytes.ReplaceAll(data, []byte("\r"), []byte(""))
+	normalizedMatch := bytes.ReplaceAll([]byte(replaceRule.Match), []byte("\r"), []byte(""))
+	normalizedReplace := bytes.ReplaceAll([]byte(replaceRule.Replace), []byte("\r"), []byte(""))
+
+	// Check if match string exists in the normalized file
+	if !bytes.Contains(normalizedData, normalizedMatch) {
+		p.logger.Warn(fmt.Sprintf("Replace rule #%d was not applied on plugin %s", ruleIndex, pluginName))
+	}
+
+	patchedData := bytes.ReplaceAll(normalizedData, normalizedMatch, normalizedReplace)
 	return os.WriteFile(pluginPath, patchedData, 0644)
 }
 
@@ -217,7 +228,3 @@ func convertFromLuaValue(lv lua.LValue) interface{} {
 		return nil
 	}
 }
-
-
-
-
