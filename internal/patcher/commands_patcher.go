@@ -213,6 +213,39 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			}
 		}
 
+		// Command 355 is Script, 655 is Script continuation
+		// Join all lines with \n, translate, put result in 355, delete 655s
+		if command.Code == 355 {
+			fullScript := ""
+
+			if text, ok := command.Parameters[0].(string); ok {
+				fullScript = text
+			}
+
+			// Collect consecutive 655 commands, joining with \n
+			startOfContinuation := commandIndex + 1
+			nextIndex := startOfContinuation
+			for nextIndex < len(commands) && commands[nextIndex].Code == 655 {
+				if text, ok := commands[nextIndex].Parameters[0].(string); ok {
+					fullScript += "\n" + text
+				}
+				nextIndex++
+			}
+
+			// Look up translation
+			if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(fullScript)]; ok {
+				// Put entire translation in 355 command
+				command.Parameters[0] = translation
+
+				// Mark all 655 commands for deletion
+				for i := startOfContinuation; i < nextIndex; i++ {
+					commandsToDelete = append(commandsToDelete, i)
+				}
+			}
+
+			commandIndex = nextIndex - 1
+		}
+
 		// Command 357 is a plugin call, param 0 is the plugin name, param 1 is the function name, param 3 is the options
 		if command.Code == 357 {
 			if len(command.Parameters) > 3 {

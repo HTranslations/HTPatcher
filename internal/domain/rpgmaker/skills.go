@@ -9,7 +9,7 @@ import (
 type SkillDamage struct {
 	Critical  bool                       `json:"critical"`
 	ElementId int                        `json:"elementId"`
-	Formula   string                     `json:"formula"`
+	Formula   any                        `json:"formula"`
 	Type      int                        `json:"type"`
 	Variance  int                        `json:"variance"`
 	Extras    map[string]json.RawMessage `json:"-"`

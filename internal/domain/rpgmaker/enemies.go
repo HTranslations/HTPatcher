@@ -65,7 +65,7 @@ type Enemy struct {
 	Gold        int                        `json:"gold"`
 	Name        string                     `json:"name"`
 	Note        string                     `json:"note"`
-	Params      []int                      `json:"params"`
+	Params      []any                      `json:"params"`
 	Extras      map[string]json.RawMessage `json:"-"`
 }
 

@@ -8,8 +8,8 @@ import (
 // TroopMember represents an enemy member of a troop
 type TroopMember struct {
 	EnemyId int                        `json:"enemyId"`
-	X       int                        `json:"x"`
-	Y       int                        `json:"y"`
+	X       float64                    `json:"x"`
+	Y       float64                    `json:"y"`
 	Hidden  bool                       `json:"hidden"`
 	Extras  map[string]json.RawMessage `json:"-"`
 }

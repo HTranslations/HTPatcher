@@ -21,6 +21,9 @@ func patchActors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(actor.Name)]; ok {
 			actor.Name = name
 		}
+		if profile, ok := patchInfo.Dictionary[util.GetTranslationKey(actor.Profile)]; ok {
+			actor.Profile = util.Wrap(util.NoNewline(profile), patchInfo.Config.WrapWidth)
+		}
 	}
 
 	return json.Marshal(actors)
