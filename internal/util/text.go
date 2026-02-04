@@ -107,7 +107,3 @@ func NoNewline(text string) string {
 func GetTranslationKey(text string) string {
 	return strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(text, "\n", ""), " ", ""))
 }
-
-
-
-
