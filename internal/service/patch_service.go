@@ -176,9 +176,32 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 		}
 	}
 
-	// VX Ace doesn't have the same title screen system as MV/MZ
-	// Skip credits patching for now (could be added later if needed)
-	s.logger.Info("Skipping credits patching for VX Ace (not implemented)")
+	// Apply credits to title screen
+	dataPath := gameInfo.DataPath
+	if dataPath == "" {
+		dataPath = filepath.Join(gameInfo.GameDir, "Data")
+	}
+
+	titleImageName, err := s.vxaEngine.GetSystemTitleImageName(dataPath)
+	if err != nil {
+		s.logger.Warn(fmt.Sprintf("Could not read title image name: %v", err))
+	} else if titleImageName != "" {
+		titleImagePath := filepath.Join(gameInfo.GameDir, "Graphics", "Titles1", titleImageName+".png")
+		if _, err := os.Stat(titleImagePath); err == nil {
+			if patchInfo.Config.CreditsLocation == "" {
+				patchInfo.Config.CreditsLocation = "bottom_left"
+			}
+			s.logger.Info("Adding credits to title screen image...")
+			if err := s.creditsPatcher.AddCreditsToResource(titleImagePath, "", patchInfo.Config.CreditsLocation); err != nil {
+				s.logger.Warn(fmt.Sprintf("Failed to add credits: %v", err))
+			} else {
+				titleRelPath, _ := filepath.Rel(gameInfo.GameDir, titleImagePath)
+				patchedFiles = append(patchedFiles, titleRelPath)
+			}
+		} else {
+			s.logger.Warn(fmt.Sprintf("Title image not found: %s", titleImagePath))
+		}
+	}
 
 	// Save patch summary
 	s.logger.Info("Saving patch summary...")

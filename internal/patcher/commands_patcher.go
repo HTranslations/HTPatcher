@@ -197,6 +197,15 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			}
 		}
 
+		// Command 108 is comment and param 0 is the text
+		if command.Code == 108 {
+			if text, ok := command.Parameters[0].(string); ok {
+				if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(text)]; ok {
+					command.Parameters[0] = translation
+				}
+			}
+		}
+
 		// Command 408 is choice description and param 0 is the description
 		if command.Code == 408 {
 			if description, ok := command.Parameters[0].(string); ok {

@@ -3,6 +3,7 @@
   
   export let show: boolean;
   export let gameInfo: domain.GameInfo | null;
+  export let gameRjCode: string;
   export let patches: domain.PatchEntry[];
   export let logs: Array<{ message: string; type: "info" | "success" | "error" | "warning" }>;
   export let isPatching: boolean;
@@ -25,14 +26,18 @@
   
   $: filteredPatches = (() => {
     const query = patchSearchQuery.toLowerCase();
+    const rjLower = gameRjCode?.toLowerCase() || "";
     return patches.filter(
       (patch) =>
         patch.title.toLowerCase().includes(query) ||
+        patch.rjCode?.toLowerCase().includes(query) ||
         patch.systemGameTitle?.toLowerCase().includes(query)
     )
     .sort((a, b) => {
-      if (a.systemGameTitle === gameInfo?.gameTitle && b.systemGameTitle !== gameInfo?.gameTitle) return -1;
-      if (a.systemGameTitle !== gameInfo?.gameTitle && b.systemGameTitle === gameInfo?.gameTitle) return 1;
+      const aMatch = rjLower && a.rjCode?.toLowerCase() === rjLower;
+      const bMatch = rjLower && b.rjCode?.toLowerCase() === rjLower;
+      if (aMatch && !bMatch) return -1;
+      if (!aMatch && bMatch) return 1;
       return 0;
     });
   })();

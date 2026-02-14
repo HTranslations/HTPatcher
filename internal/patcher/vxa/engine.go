@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"htpatcher/internal/domain"
+	"htpatcher/internal/marshal"
 	"htpatcher/internal/rgss3a"
 	"htpatcher/internal/util"
 	"os"
@@ -144,6 +145,31 @@ func (e *Engine) patchDataFile(ctx context.Context, filePath string, patchInfo *
 	}
 
 	return nil
+}
+
+// GetSystemTitleImageName reads System.rvdata2 and returns the title1_name property
+func (e *Engine) GetSystemTitleImageName(dataPath string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(dataPath, "System.rvdata2"))
+	if err != nil {
+		return "", fmt.Errorf("failed to read System.rvdata2: %w", err)
+	}
+
+	raw, err := marshal.Parse(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse System.rvdata2: %w", err)
+	}
+
+	obj, ok := raw.(*marshal.RubyObject)
+	if !ok {
+		return "", fmt.Errorf("expected RubyObject, got %T", raw)
+	}
+
+	title1Name, ok := obj.Properties["title1_name"].(string)
+	if !ok {
+		return "", fmt.Errorf("title1_name not found in System.rvdata2")
+	}
+
+	return title1Name, nil
 }
 
 // getDataFileType determines the file type from the filename

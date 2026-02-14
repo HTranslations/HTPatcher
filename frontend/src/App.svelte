@@ -281,10 +281,10 @@
         // Show translate drawer
         translateGameInfo = gameInfo;
         currentTranslatingGame = game;
-        // Try to find a matching patch
+        // Try to find a matching patch by RJ code
         selectedPatch =
           patches.find(
-            (patch) => patch.systemGameTitle === gameInfo.gameTitle,
+            (patch) => patch.rjCode && game.rjCode && patch.rjCode.toLowerCase() === game.rjCode.toLowerCase(),
           ) || null;
         translateLogs = [];
         translatePatchInfo = null;
@@ -661,6 +661,7 @@
   <TranslateGameDrawer
     show={showTranslateDrawer}
     gameInfo={translateGameInfo}
+    gameRjCode={currentTranslatingGame?.rjCode || ""}
     {patches}
     logs={translateLogs}
     {isPatching}

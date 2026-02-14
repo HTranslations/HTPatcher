@@ -605,6 +605,17 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 			}
 		}
 
+		// Command 108: Comment
+		if code == 108 {
+			if len(params) > 0 {
+				if text, ok := params[0].(string); ok {
+					if translation, exists := patchInfo.Dictionary[util.GetTranslationKey(text)]; exists {
+						command.setParameter(0, translation)
+					}
+				}
+			}
+		}
+
 		// Command 408: Choice description
 		if code == 408 {
 			if len(params) > 0 {
