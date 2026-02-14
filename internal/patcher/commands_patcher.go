@@ -161,9 +161,25 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 
 		// Command 405 is rolling text and param 0 is the text
 		if command.Code == 405 {
-			if text, ok := command.Parameters[0].(string); ok {
-				if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(text)]; ok {
-					command.Parameters[0] = translation
+			scrollingCommands := []*rpgmaker.EventCommand{}
+			fullText := ""
+
+			// Collect all consecutive 405 commands
+			for commandIndex < len(commands) && commands[commandIndex].Code == 405 {
+				scrollingCommands = append(scrollingCommands, commands[commandIndex])
+				if text, ok := commands[commandIndex].Parameters[0].(string); ok {
+					fullText += text
+				}
+				commandIndex++
+			}
+			commandIndex--
+
+			translationKey := util.GetTranslationKey(fullText)
+			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
+				scrollingCommands[0].Parameters[0] = util.Wrap(util.NoNewline(translation), patchInfo.Config.WrapWidth)
+				// Only keep the first command
+				for k := (commandIndex - len(scrollingCommands) + 2); k <= commandIndex; k++ {
+					commandsToDelete = append(commandsToDelete, k)
 				}
 			}
 		}

@@ -9,6 +9,7 @@ import (
 	"htpatcher/internal/domain"
 	"htpatcher/internal/domain/rpgmaker"
 	"htpatcher/internal/patcher"
+	"htpatcher/internal/patcher/vxa"
 	"htpatcher/internal/util"
 	"io"
 	"net/http"
@@ -32,6 +33,7 @@ type PatchRepositoryInterface interface {
 type PatchService struct {
 	patchRepo      PatchRepositoryInterface
 	patcherEngine  *patcher.Engine
+	vxaEngine      *vxa.Engine
 	pluginPatcher  *patcher.PluginPatcher
 	creditsPatcher *patcher.CreditsPatcher
 	logger         Logger
@@ -42,6 +44,7 @@ func NewPatchService(patchRepo PatchRepositoryInterface, logger Logger) *PatchSe
 	return &PatchService{
 		patchRepo:      patchRepo,
 		patcherEngine:  patcher.NewEngine(logger),
+		vxaEngine:      vxa.NewEngine(logger),
 		pluginPatcher:  patcher.NewPluginPatcher(logger),
 		creditsPatcher: patcher.NewCreditsPatcher(),
 		logger:         logger,
@@ -130,6 +133,84 @@ func (s *PatchService) FetchAllPatches() ([]domain.PatchEntry, error) {
 func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
 	s.logger.Info("Starting patch application...")
 
+	// Route to VX Ace patcher if needed
+	if gameInfo.GameVersion == "vxace" {
+		return s.applyVXAcePatch(ctx, gameInfo, patchInfo)
+	}
+
+	// MV/MZ patching logic
+	return s.applyMVMZPatch(ctx, gameInfo, patchInfo)
+}
+
+// applyVXAcePatch applies a patch to a VX Ace game
+func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+	s.logger.Info("Detected VX Ace game, using VX Ace patcher...")
+
+	// Patch game data files
+	patchedFiles, err := s.vxaEngine.PatchGame(ctx, gameInfo, patchInfo)
+	if err != nil {
+		return err
+	}
+
+	// Apply overrides
+	if len(patchInfo.Overrides) > 0 {
+		r, err := s.patchRepo.Open(patchInfo.PatchPath)
+		if err != nil {
+			s.logger.Error("Failed to open patch")
+			return err
+		}
+		defer r.Close()
+		for _, override := range patchInfo.Overrides {
+			data, err := s.patchRepo.ReadFileFromZip(r, filepath.Join("overrides", override))
+			if err != nil {
+				s.logger.Error("Failed to read override")
+				return err
+			}
+			err = os.WriteFile(filepath.Join(gameInfo.GameDir, override), data, 0644)
+			if err != nil {
+				s.logger.Error("Failed to write override")
+				return err
+			}
+			s.logger.Info(fmt.Sprintf("Overwritten file %s", override))
+			patchedFiles = append(patchedFiles, override)
+		}
+	}
+
+	// VX Ace doesn't have the same title screen system as MV/MZ
+	// Skip credits patching for now (could be added later if needed)
+	s.logger.Info("Skipping credits patching for VX Ace (not implemented)")
+
+	// Save patch summary
+	s.logger.Info("Saving patch summary...")
+	patchSummary := domain.PatchSummary{
+		PatchedAt:    time.Now().UTC().Format(time.RFC3339),
+		PatchedFiles: patchedFiles,
+	}
+	summaryData, err := json.MarshalIndent(patchSummary, "", "  ")
+	if err != nil {
+		s.logger.Error("Failed to marshal patch summary")
+		return err
+	}
+	summaryPath := filepath.Join(gameInfo.GameDir, "patch-summary.json")
+	if err := os.WriteFile(summaryPath, summaryData, 0644); err != nil {
+		s.logger.Error("Failed to write patch summary")
+		return err
+	}
+
+	s.logger.Success("Patch applied successfully!")
+
+	// Clean up downloaded patch file if it's in temp directory
+	tempDir := os.TempDir()
+	if filepath.HasPrefix(patchInfo.PatchPath, tempDir) {
+		os.Remove(patchInfo.PatchPath)
+		s.logger.Info(fmt.Sprintf("Cleaned up temp file: %s", filepath.Base(patchInfo.PatchPath)))
+	}
+
+	return nil
+}
+
+// applyMVMZPatch applies a patch to a MV/MZ game
+func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
 	// Track all patched files (relative paths from game directory)
 	var patchedFiles []string
 

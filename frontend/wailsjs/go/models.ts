@@ -253,6 +253,7 @@ export namespace domain {
 	    jsPath: string;
 	    imgPath: string;
 	    gameTitle: string;
+	    gameVersion: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GameInfo(source);
@@ -266,6 +267,7 @@ export namespace domain {
 	        this.jsPath = source["jsPath"];
 	        this.imgPath = source["imgPath"];
 	        this.gameTitle = source["gameTitle"];
+	        this.gameVersion = source["gameVersion"];
 	    }
 	}
 	export class LocatedGame {

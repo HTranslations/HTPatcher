@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"htpatcher/internal/domain"
 	"htpatcher/internal/domain/rpgmaker"
+	"htpatcher/internal/domain/rpgmakervxa"
+	"htpatcher/internal/marshal"
+	"htpatcher/internal/rgss3a"
 	"htpatcher/internal/util"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -59,6 +63,115 @@ func (s *GameService) GetGameInfoFromExePath(filePath string) (*domain.GameInfo,
 	gameInfo.GameDir = filepath.Dir(filePath)
 	s.logger.Info(fmt.Sprintf("Game directory: %s", gameInfo.GameDir))
 
+	// Check for VX Ace game first
+	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
+	dataPathVXA := filepath.Join(gameInfo.GameDir, "Data")
+
+	// Check if this is a VX Ace game
+	isVXAce := false
+	if _, err := os.Stat(rgss3aPath); err == nil {
+		// Has Game.rgss3a - definitely VX Ace
+		isVXAce = true
+	} else if _, err := os.Stat(dataPathVXA); err == nil {
+		// Check for .rvdata2 files in Data folder
+		files, err := os.ReadDir(dataPathVXA)
+		if err == nil {
+			for _, f := range files {
+				if strings.HasSuffix(strings.ToLower(f.Name()), ".rvdata2") {
+					isVXAce = true
+					break
+				}
+			}
+		}
+	}
+
+	if isVXAce {
+		return s.getVXAceGameInfo(&gameInfo, rgss3aPath, dataPathVXA)
+	}
+
+	// Standard MV/MZ game detection
+	return s.getMVMZGameInfo(&gameInfo)
+}
+
+// getVXAceGameInfo handles VX Ace game detection
+func (s *GameService) getVXAceGameInfo(gameInfo *domain.GameInfo, rgss3aPath, dataPath string) (*domain.GameInfo, error) {
+	gameInfo.GameVersion = "vxace"
+	gameInfo.DataPath = dataPath
+
+	// VX Ace doesn't have js or img paths in the same way
+	gameInfo.JsPath = ""
+	gameInfo.ImgPath = filepath.Join(gameInfo.GameDir, "Graphics")
+
+	// Try to read game title from System.rvdata2
+	systemPath := filepath.Join(dataPath, "System.rvdata2")
+
+	// If archive exists and System.rvdata2 doesn't exist in Data folder, read from archive
+	if _, err := os.Stat(systemPath); os.IsNotExist(err) {
+		if _, err := os.Stat(rgss3aPath); err == nil {
+			// Need to read from archive
+			s.logger.Info("Reading system data from Game.rgss3a archive")
+			title, err := s.readTitleFromArchive(rgss3aPath)
+			if err != nil {
+				s.logger.Warn(fmt.Sprintf("Failed to read title from archive: %v", err))
+				gameInfo.GameTitle = "Unknown VX Ace Game"
+			} else {
+				gameInfo.GameTitle = title
+			}
+			return gameInfo, nil
+		}
+	}
+
+	// Read from extracted file
+	if _, err := os.Stat(systemPath); err == nil {
+		data, err := os.ReadFile(systemPath)
+		if err != nil {
+			s.logger.Warn(fmt.Sprintf("Failed to read System.rvdata2: %v", err))
+			gameInfo.GameTitle = "Unknown VX Ace Game"
+			return gameInfo, nil
+		}
+
+		raw, err := marshal.Parse(data)
+		if err != nil {
+			s.logger.Warn(fmt.Sprintf("Failed to parse System.rvdata2: %v", err))
+			gameInfo.GameTitle = "Unknown VX Ace Game"
+			return gameInfo, nil
+		}
+
+		gameInfo.GameTitle = rpgmakervxa.GetSystemTitle(raw)
+		if gameInfo.GameTitle == "" {
+			gameInfo.GameTitle = "Unknown VX Ace Game"
+		}
+	} else {
+		gameInfo.GameTitle = "Unknown VX Ace Game"
+	}
+
+	s.logger.Info(fmt.Sprintf("VX Ace game detected: \"%s\"", gameInfo.GameTitle))
+	return gameInfo, nil
+}
+
+// readTitleFromArchive reads the game title from a Game.rgss3a archive
+func (s *GameService) readTitleFromArchive(archivePath string) (string, error) {
+	archive, err := rgss3a.Open(archivePath)
+	if err != nil {
+		return "", err
+	}
+	defer archive.Close()
+
+	data, err := archive.ReadFile("Data/System.rvdata2")
+	if err != nil {
+		return "", err
+	}
+
+	raw, err := marshal.Parse(data)
+	if err != nil {
+		return "", err
+	}
+
+	return rpgmakervxa.GetSystemTitle(raw), nil
+}
+
+// getMVMZGameInfo handles MV/MZ game detection
+func (s *GameService) getMVMZGameInfo(gameInfo *domain.GameInfo) (*domain.GameInfo, error) {
 	// Set data and js paths
 	dataPath := filepath.Join(gameInfo.GameDir, "data")
 	imgPath := filepath.Join(gameInfo.GameDir, "img")
@@ -85,6 +198,7 @@ func (s *GameService) GetGameInfoFromExePath(filePath string) (*domain.GameInfo,
 	gameInfo.DataPath = dataPath
 	gameInfo.JsPath = jsPath
 	gameInfo.ImgPath = imgPath
+	gameInfo.GameVersion = "mv" // Default to MV, could be MZ but doesn't matter for patching
 
 	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
 	if err != nil {
@@ -101,7 +215,7 @@ func (s *GameService) GetGameInfoFromExePath(filePath string) (*domain.GameInfo,
 	gameInfo.GameTitle = systemInfo.GameTitle
 	s.logger.Info(fmt.Sprintf("Game title: \"%s\"", gameInfo.GameTitle))
 
-	return &gameInfo, nil
+	return gameInfo, nil
 }
 
 // LaunchGame launches a game executable

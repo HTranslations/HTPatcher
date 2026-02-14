@@ -25,6 +25,76 @@ func NewBackupService(logger Logger) *BackupService {
 
 // BackupGameData creates a backup of game data before patching
 func (s *BackupService) BackupGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+	// Route to VX Ace backup if needed
+	if gameInfo.GameVersion == "vxace" {
+		return s.backupVXAceGameData(gameInfo, patchInfo)
+	}
+
+	return s.backupMVMZGameData(gameInfo, patchInfo)
+}
+
+// backupVXAceGameData creates a backup for VX Ace games
+func (s *BackupService) backupVXAceGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+	filesToBackup := []string{}
+
+	// Check if Game.rgss3a exists (packed game) - back it up first
+	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
+	isPacked := false
+	if _, err := os.Stat(rgss3aPath); err == nil {
+		isPacked = true
+		filesToBackup = append(filesToBackup, "Game.rgss3a")
+	}
+
+	// Only try to list .rvdata2 files if Data folder exists
+	if _, err := os.Stat(gameInfo.DataPath); err == nil {
+		rvdata2Files, err := util.ListFilesWithExtension(gameInfo.DataPath, ".rvdata2")
+		if err != nil {
+			// If packed, this is okay - files are in archive
+			if !isPacked {
+				return err
+			}
+		} else {
+			for _, file := range rvdata2Files {
+				relPath, err := filepath.Rel(gameInfo.GameDir, file)
+				if err != nil {
+					return err
+				}
+				filesToBackup = append(filesToBackup, relPath)
+			}
+		}
+	}
+
+	// Add overrides
+	filesToBackup = append(filesToBackup, patchInfo.Overrides...)
+
+	s.logger.Info(fmt.Sprintf("Found %d files to backup", len(filesToBackup)))
+
+	backupPath := filepath.Join(gameInfo.GameDir, ".backup")
+	os.MkdirAll(backupPath, 0755)
+
+	copiedFiles := 0
+	for _, file := range filesToBackup {
+		srcPath := filepath.Join(gameInfo.GameDir, file)
+		dstPath := filepath.Join(backupPath, file)
+		copied, err := copyFile(srcPath, dstPath, false)
+		if err != nil {
+			// Skip if file doesn't exist (may be in archive)
+			if os.IsNotExist(err) {
+				continue
+			}
+			return err
+		}
+		if copied {
+			copiedFiles++
+		}
+	}
+
+	s.logger.Info(fmt.Sprintf("Backed up %d unseen files", copiedFiles))
+	return nil
+}
+
+// backupMVMZGameData creates a backup for MV/MZ games
+func (s *BackupService) backupMVMZGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
 	filesToBackup := []string{}
 
 	// List all json files in the data folder
@@ -167,6 +237,16 @@ func (s *BackupService) RestoreBackup(gameInfo *domain.GameInfo) error {
 	// Remove the backup folder
 	os.RemoveAll(backupPath)
 	s.logger.Info(fmt.Sprintf("Removed backup folder %s", backupPath))
+
+	// If Game.rgss3a was restored, remove the Data folder since it was created by extraction
+	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
+	if _, err := os.Stat(rgss3aPath); err == nil {
+		dataPath := filepath.Join(gameInfo.GameDir, "Data")
+		if _, err := os.Stat(dataPath); err == nil {
+			os.RemoveAll(dataPath)
+			s.logger.Info("Removed Data folder (packed game restored)")
+		}
+	}
 
 	// Remove patch-summary.json since the game is no longer patched
 	patchSummaryPath := filepath.Join(gameInfo.GameDir, "patch-summary.json")

@@ -105,5 +105,8 @@ func NoNewline(text string) string {
 
 // GetTranslationKey generates a normalized key for dictionary lookup
 func GetTranslationKey(text string) string {
-	return strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(text, "\n", ""), " ", ""))
+	text = strings.ReplaceAll(text, "\n", "")
+	text = strings.ReplaceAll(text, " ", "")
+	text = strings.ReplaceAll(text, "\u3000", "") // full-width space
+	return strings.ToLower(text)
 }
