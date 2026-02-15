@@ -169,6 +169,10 @@ func (s *BackupService) backupMVMZGameData(gameInfo *domain.GameInfo, patchInfo 
 		dstPath := filepath.Join(backupPath, file)
 		copied, err := copyFile(srcPath, dstPath, false)
 		if err != nil {
+			if os.IsNotExist(err) {
+				s.logger.Warn(fmt.Sprintf("File not found, skipping backup: %s", file))
+				continue
+			}
 			return err
 		}
 		if copied {
