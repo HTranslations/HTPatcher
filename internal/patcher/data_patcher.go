@@ -87,6 +87,9 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 		if commonEvent == nil {
 			continue
 		}
+		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(commonEvent.Name)]; ok {
+			commonEvent.Name = name
+		}
 		newCommands, err := patchCommands(commonEvent.List, patchInfo)
 		if err != nil {
 			return nil, err
@@ -158,6 +161,9 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	for _, event := range mapData.Events {
 		if event == nil {
 			continue
+		}
+		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(event.Name)]; ok {
+			event.Name = name
 		}
 		for i := range event.Pages {
 			newCommands, err := patchCommands(event.Pages[i].List, patchInfo)

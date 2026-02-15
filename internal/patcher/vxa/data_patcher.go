@@ -305,6 +305,7 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 			continue
 		}
 
+		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
 		patchEventCommands(obj, patchInfo)
 	}
 
@@ -334,6 +335,9 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			if !ok {
 				continue
 			}
+
+			// Patch event name
+			patchStringProperty(eventObj, "name", patchInfo.Dictionary, false, 0)
 
 			// Patch event pages
 			pages := eventObj.GetArray("pages")
