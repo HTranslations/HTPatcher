@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"htpatcher/internal/domain"
+	"htpatcher/internal/util"
 	"io"
 	"net/http"
 	"os"
@@ -33,7 +34,13 @@ func (r *PatchRepository) ReadDictionary(zipReader *zip.ReadCloser) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	return *dictionary, nil
+
+	// Normalize dictionary keys to match GetTranslationKey output
+	normalized := make(map[string]string, len(*dictionary))
+	for key, value := range *dictionary {
+		normalized[util.GetTranslationKey(key)] = value
+	}
+	return normalized, nil
 }
 
 // ReadConfig reads the patch configuration
