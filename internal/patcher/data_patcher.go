@@ -248,6 +248,16 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		system.Locale = patchInfo.Config.Locale
 	}
 
+	// Patch game title
+	if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.GameTitle)]; ok {
+		system.GameTitle = translation
+	}
+
+	// Patch currency unit
+	if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.CurrencyUnit)]; ok {
+		system.CurrencyUnit = translation
+	}
+
 	// Patch armor types
 	for i := range system.ArmorTypes {
 		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.ArmorTypes[i])]; ok {
