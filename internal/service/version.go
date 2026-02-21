@@ -1,3 +1,3 @@
 package service
 
-const Version = 24
+const Version = 25
