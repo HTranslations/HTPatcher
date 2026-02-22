@@ -6,8 +6,8 @@ export function AddGameToCollection(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['AddGameToCollection'](arg1, arg2, arg3, arg4);
 }
 
-export function ApplyPatch(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['ApplyPatch'](arg1, arg2, arg3, arg4);
+export function ApplyPatch(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ApplyPatch'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function ApplyUpdate() {

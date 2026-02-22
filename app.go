@@ -158,7 +158,7 @@ func (a *App) FetchAllPatches() ([]domain.PatchEntry, error) {
 }
 
 // ApplyPatch applies a patch to a game
-func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, launchAfterPatch bool, backupBeforePatch bool) error {
+func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, launchAfterPatch bool, backupBeforePatch bool, injectMessageHide bool) error {
 	if backupBeforePatch {
 		a.Log("Backing up game data...")
 		err := a.backupService.BackupGameData(&gameInfo, &patchInfo)
@@ -168,7 +168,7 @@ func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, l
 		}
 	}
 
-	err := a.patchService.ApplyPatch(a.ctx, &gameInfo, &patchInfo)
+	err := a.patchService.ApplyPatch(a.ctx, &gameInfo, &patchInfo, injectMessageHide)
 	if err != nil {
 		return err
 	}

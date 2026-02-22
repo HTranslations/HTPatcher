@@ -130,7 +130,7 @@ func (s *PatchService) FetchAllPatches() ([]domain.PatchEntry, error) {
 }
 
 // ApplyPatch applies a patch to a game
-func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
 	s.logger.Info("Starting patch application...")
 
 	// Route to VX Ace patcher if needed
@@ -139,7 +139,7 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 	}
 
 	// MV/MZ patching logic
-	return s.applyMVMZPatch(ctx, gameInfo, patchInfo)
+	return s.applyMVMZPatch(ctx, gameInfo, patchInfo, injectMessageHide)
 }
 
 // applyVXAcePatch applies a patch to a VX Ace game
@@ -233,7 +233,7 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 }
 
 // applyMVMZPatch applies a patch to a MV/MZ game
-func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
 	// Track all patched files (relative paths from game directory)
 	var patchedFiles []string
 
@@ -319,6 +319,16 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 			s.logger.Info(fmt.Sprintf("Overwritten file %s", override))
 			// Track override file
 			patchedFiles = append(patchedFiles, override)
+		}
+	}
+
+	// Inject MessageWindowHidden plugin if requested
+	if injectMessageHide {
+		injectedFiles, err := s.pluginPatcher.InjectMessageWindowHidden(ctx, gameInfo)
+		if err != nil {
+			s.logger.Warn(fmt.Sprintf("Failed to inject MessageWindowHidden: %v", err))
+		} else {
+			patchedFiles = append(patchedFiles, injectedFiles...)
 		}
 	}
 

@@ -4,7 +4,7 @@ import {domain} from '../models';
 
 export function AddGameToCollection(arg1:domain.LocatedGame,arg2:string,arg3:string,arg4:Array<string>):Promise<void>;
 
-export function ApplyPatch(arg1:domain.GameInfo,arg2:domain.PatchInfo,arg3:boolean,arg4:boolean):Promise<void>;
+export function ApplyPatch(arg1:domain.GameInfo,arg2:domain.PatchInfo,arg3:boolean,arg4:boolean,arg5:boolean):Promise<void>;
 
 export function ApplyUpdate():Promise<void>;
 

@@ -17,7 +17,9 @@
   export let onTogglePatch: (patch: domain.PatchEntry) => void;
   export let onClearCustomPatch: () => void;
   export let onApplyPatch: () => void;
+  export let injectMessageHide: boolean;
   export let onLaunchAfterPatchChange: (value: boolean) => void;
+  export let onInjectMessageHideChange: (value: boolean) => void;
   export let onPatchSearchQueryChange: (value: string) => void;
   
   let logContainer: HTMLDivElement;
@@ -233,6 +235,17 @@
             />
             <span class="text-sm text-zinc-400">
               Launch game after patching
+            </span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={injectMessageHide}
+              onchange={(e) => onInjectMessageHideChange((e.target as HTMLInputElement).checked)}
+              class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
+            />
+            <span class="text-sm text-zinc-400">
+              Inject plugin to hide message boxes on right click
             </span>
           </label>
           <button

@@ -3,6 +3,7 @@ package patcher
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"htpatcher/internal/domain"
@@ -13,6 +14,9 @@ import (
 
 	lua "github.com/yuin/gopher-lua"
 )
+
+//go:embed embedded/MessageWindowHidden.js
+var messageWindowHiddenJS []byte
 
 // PluginPatcher handles plugin patching operations
 type PluginPatcher struct {
@@ -109,6 +113,73 @@ func (p *PluginPatcher) UpdatePluginsJs(ctx context.Context, pluginsJsPath strin
 	patchedData := before + string(patchedPluginsJson) + after
 
 	return os.WriteFile(pluginsJsPath, []byte(patchedData), 0644)
+}
+
+// InjectMessageWindowHidden injects the MessageWindowHidden plugin into the game
+func (p *PluginPatcher) InjectMessageWindowHidden(ctx context.Context, gameInfo *domain.GameInfo) ([]string, error) {
+	var patchedFiles []string
+
+	pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
+	data, err := os.ReadFile(pluginsJsPath)
+	if err != nil {
+		return nil, err
+	}
+
+	jsContent := string(data)
+	startIndex := strings.Index(jsContent, "[")
+	endIndex := strings.LastIndex(jsContent, "]")
+	if startIndex == -1 || endIndex == -1 {
+		return nil, fmt.Errorf("could not parse plugins.js")
+	}
+
+	pluginsJson := jsContent[startIndex : endIndex+1]
+	var plugins []domain.PluginData
+	if err := json.Unmarshal([]byte(pluginsJson), &plugins); err != nil {
+		return nil, err
+	}
+
+	// Check if already exists
+	for _, plugin := range plugins {
+		if plugin.Name == "MessageWindowHidden" {
+			p.logger.Info("MessageWindowHidden plugin already present, skipping injection")
+			return nil, nil
+		}
+	}
+
+	// Append the plugin entry
+	params := json.RawMessage(`{"triggerButton":"[\"右クリック\"]","triggerSwitch":"0","syncSwitch":"false","linkPictureNumbers":"[]","linkShowPictureNumbers":"[]","disableLinkSwitchId":"0","disableSwitchId":"0","disableInBattle":"false","disableInChoice":"true","restoreByDecision":"false"}`)
+	plugins = append(plugins, domain.PluginData{
+		Name:        "MessageWindowHidden",
+		Description: "Right-click to hide message window",
+		Status:      true,
+		Parameters:  params,
+	})
+
+	patchedPluginsJson, err := json.Marshal(plugins)
+	if err != nil {
+		return nil, err
+	}
+
+	before := jsContent[:startIndex]
+	after := jsContent[endIndex+1:]
+	patchedData := before + string(patchedPluginsJson) + after
+
+	if err := os.WriteFile(pluginsJsPath, []byte(patchedData), 0644); err != nil {
+		return nil, err
+	}
+	relPath, _ := filepath.Rel(gameInfo.GameDir, pluginsJsPath)
+	patchedFiles = append(patchedFiles, relPath)
+
+	// Copy the JS file to the plugins directory
+	destPath := filepath.Join(gameInfo.JsPath, "plugins", "MessageWindowHidden.js")
+	if err := os.WriteFile(destPath, messageWindowHiddenJS, 0644); err != nil {
+		return nil, err
+	}
+	relPath, _ = filepath.Rel(gameInfo.GameDir, destPath)
+	patchedFiles = append(patchedFiles, relPath)
+
+	p.logger.Info("Injected MessageWindowHidden plugin")
+	return patchedFiles, nil
 }
 
 // Lua helper functions

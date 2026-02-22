@@ -72,6 +72,7 @@
   }> = [];
   let isPatching = false;
   let launchAfterPatch = true;
+  let injectMessageHide = false;
   let selectedPatch: domain.PatchEntry | null = null;
   let patchSearchQuery = "";
   let currentTranslatingGame: domain.LocatedGame | null = null;
@@ -352,6 +353,7 @@
           translatePatchInfo,
           launchAfterPatch,
           true,
+          injectMessageHide,
         );
         await SetGameTranslated(currentTranslatingGame.id, true);
         await loadGames();
@@ -666,6 +668,7 @@
     logs={translateLogs}
     {isPatching}
     bind:launchAfterPatch
+    bind:injectMessageHide
     {selectedPatch}
     patchInfo={translatePatchInfo}
     bind:patchSearchQuery
@@ -675,6 +678,7 @@
     onClearCustomPatch={clearCustomPatch}
     onApplyPatch={applyPatch}
     onLaunchAfterPatchChange={(value) => (launchAfterPatch = value)}
+    onInjectMessageHideChange={(value) => (injectMessageHide = value)}
     onPatchSearchQueryChange={(value) => (patchSearchQuery = value)}
   />
 
