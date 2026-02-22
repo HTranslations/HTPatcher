@@ -237,17 +237,19 @@
               Launch game after patching
             </span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={injectMessageHide}
-              onchange={(e) => onInjectMessageHideChange((e.target as HTMLInputElement).checked)}
-              class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
-            />
-            <span class="text-sm text-zinc-400">
-              Inject plugin to hide message boxes on right click
-            </span>
-          </label>
+          {#if gameInfo && gameInfo.gameVersion !== "vxace"}
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={injectMessageHide}
+                onchange={(e) => onInjectMessageHideChange((e.target as HTMLInputElement).checked)}
+                class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
+              />
+              <span class="text-sm text-zinc-400">
+                Inject plugin to hide message boxes on right click
+              </span>
+            </label>
+          {/if}
           <button
             onclick={onApplyPatch}
             disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch) || patchSuccess}
