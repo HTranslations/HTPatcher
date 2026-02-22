@@ -343,7 +343,7 @@
 
     try {
       if (selectedPatch) {
-        translatePatchInfo = await DownloadPatch(selectedPatch.patchDownloadId);
+        translatePatchInfo = await DownloadPatch(selectedPatch.patch.url, selectedPatch.patch.fileName);
       }
 
       if (translatePatchInfo && currentTranslatingGame) {

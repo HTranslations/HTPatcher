@@ -32,12 +32,20 @@ type PersistentData struct {
 
 // PatchEntry represents a patch available for download
 type PatchEntry struct {
-	Title           string `json:"title"`
-	RJCode          string `json:"rjCode"`
-	StoreLink       string `json:"storeLink"`
-	ReleaseDate     string `json:"releaseDate"`
-	SystemGameTitle string `json:"systemGameTitle"`
-	PatchDownloadId string `json:"patchDownloadId"`
+	Title       string          `json:"title"`
+	RJCode      string          `json:"rjCode"`
+	Slug        string          `json:"slug"`
+	StoreLink   string          `json:"storeLink"`
+	ReleaseDate string          `json:"releaseDate"`
+	Patch       *PatchDownload  `json:"patch"`
+}
+
+// PatchDownload represents the downloadable patch file
+type PatchDownload struct {
+	Url      string `json:"url"`
+	FileName string `json:"fileName"`
+	FileSize int    `json:"fileSize"`
+	Version  string `json:"version"`
 }
 
 // PatchSummary records which files were patched during the patch process

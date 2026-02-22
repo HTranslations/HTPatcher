@@ -12,7 +12,7 @@ export function CheckForUpdate():Promise<domain.ReleaseInfo>;
 
 export function DeletePersistentData():Promise<void>;
 
-export function DownloadPatch(arg1:string):Promise<domain.PatchInfo>;
+export function DownloadPatch(arg1:string,arg2:string):Promise<domain.PatchInfo>;
 
 export function DownloadUpdate(arg1:domain.ReleaseInfo):Promise<void>;
 

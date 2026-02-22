@@ -188,9 +188,9 @@ func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, l
 
 // ===== Download Service Methods =====
 
-// DownloadPatch downloads a patch
-func (a *App) DownloadPatch(patchDownloadId string) (*domain.PatchInfo, error) {
-	return a.downloadService.DownloadPatch(patchDownloadId, func(filePath string) (*domain.PatchInfo, error) {
+// DownloadPatch downloads a patch from a direct URL
+func (a *App) DownloadPatch(url string, fileName string) (*domain.PatchInfo, error) {
+	return a.downloadService.DownloadPatch(url, fileName, func(filePath string) (*domain.PatchInfo, error) {
 		patchInfo, err := a.patchService.LoadPatchInfo(filePath)
 		if err != nil {
 			return nil, err

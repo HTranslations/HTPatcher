@@ -2,7 +2,6 @@ package repository
 
 import (
 	"archive/zip"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,54 +74,20 @@ func (r *PatchRepository) ReadFileFromZip(zipReader *zip.ReadCloser, path string
 	return nil, errors.New("file " + path + " not found")
 }
 
-// Download downloads a patch from the download service
-func (r *PatchRepository) Download(patchDownloadId string) (string, error) {
-	url := fmt.Sprintf("https://cybersharing.net/api/containers/%s", patchDownloadId)
-
-	response, err := http.Post(url, "application/json", bytes.NewBufferString("{}"))
+// Download downloads a patch file from a direct URL
+func (r *PatchRepository) Download(url string, fileName string) (string, error) {
+	response, err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
 	defer response.Body.Close()
 
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %d", response.StatusCode)
 	}
-
-	var container ContainerResponse
-	if err := json.Unmarshal(body, &container); err != nil {
-		return "", err
-	}
-
-	if len(container.Uploads) == 0 {
-		return "", errors.New("no uploads found in container")
-	}
-
-	// Find the .htpatch file
-	var patchUpload *Upload
-	for _, upload := range container.Uploads {
-		if strings.HasSuffix(upload.FileName, ".htpatch") {
-			patchUpload = &upload
-			break
-		}
-	}
-
-	if patchUpload == nil {
-		return "", errors.New("no patch upload found in container")
-	}
-
-	downloadUrl := fmt.Sprintf("https://cybersharing.net/api/download/file/%s/%s/%s/%s",
-		container.ID, patchUpload.ID, container.Signature, patchUpload.FileName)
-
-	downloadResponse, err := http.Get(downloadUrl)
-	if err != nil {
-		return "", err
-	}
-	defer downloadResponse.Body.Close()
 
 	tempDir := os.TempDir()
-	filePath := filepath.Join(tempDir, patchUpload.FileName)
+	filePath := filepath.Join(tempDir, fileName)
 
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -130,24 +95,12 @@ func (r *PatchRepository) Download(patchDownloadId string) (string, error) {
 	}
 	defer file.Close()
 
-	_, err = io.Copy(file, downloadResponse.Body)
+	_, err = io.Copy(file, response.Body)
 	if err != nil {
 		return "", err
 	}
 
 	return filePath, nil
-}
-
-// Helper types for download API
-type ContainerResponse struct {
-	ID        string   `json:"id"`
-	Signature string   `json:"signature"`
-	Uploads   []Upload `json:"uploads"`
-}
-
-type Upload struct {
-	ID       string `json:"id"`
-	FileName string `json:"fileName"`
 }
 
 // readJSONFromZip is a generic helper to read and unmarshal JSON from a zip file

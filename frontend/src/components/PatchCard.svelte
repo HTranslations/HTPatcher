@@ -38,9 +38,9 @@
             <h3 class="text-lg font-semibold text-zinc-100 mb-1 line-clamp-2 text-left">
               {patch.title}
             </h3>
-            {#if patch.systemGameTitle}
+            {#if patch.patch?.version}
               <p class="text-sm text-zinc-400 mb-2 truncate text-left">
-                {patch.systemGameTitle}
+                Patch v{patch.patch.version}
               </p>
             {/if}
           </div>

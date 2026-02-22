@@ -30,8 +30,7 @@
     return patches.filter(
       (patch) =>
         patch.title.toLowerCase().includes(query) ||
-        patch.rjCode?.toLowerCase().includes(query) ||
-        patch.systemGameTitle?.toLowerCase().includes(query)
+        patch.rjCode?.toLowerCase().includes(query)
     )
     .sort((a, b) => {
       const aMatch = rjLower && a.rjCode?.toLowerCase() === rjLower;
@@ -192,8 +191,8 @@
                       {/if}
                       <div class="flex-1 pr-8">
                         <div class="font-medium">{patch.title}</div>
-                        {#if patch.systemGameTitle}
-                          <div class="text-xs text-zinc-500 mt-1">{patch.systemGameTitle}</div>
+                        {#if patch.rjCode}
+                          <div class="text-xs text-zinc-500 mt-1">{patch.rjCode}</div>
                         {/if}
                       </div>
                     </button>

@@ -300,13 +300,31 @@ export namespace domain {
 	}
 	
 	
+	export class PatchDownload {
+	    url: string;
+	    fileName: string;
+	    fileSize: number;
+	    version: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PatchDownload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.fileName = source["fileName"];
+	        this.fileSize = source["fileSize"];
+	        this.version = source["version"];
+	    }
+	}
 	export class PatchEntry {
 	    title: string;
 	    rjCode: string;
+	    slug: string;
 	    storeLink: string;
 	    releaseDate: string;
-	    systemGameTitle: string;
-	    patchDownloadId: string;
+	    patch?: PatchDownload;
 	
 	    static createFrom(source: any = {}) {
 	        return new PatchEntry(source);
@@ -316,11 +334,29 @@ export namespace domain {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
 	        this.rjCode = source["rjCode"];
+	        this.slug = source["slug"];
 	        this.storeLink = source["storeLink"];
 	        this.releaseDate = source["releaseDate"];
-	        this.systemGameTitle = source["systemGameTitle"];
-	        this.patchDownloadId = source["patchDownloadId"];
+	        this.patch = this.convertValues(source["patch"], PatchDownload);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class PatchInfo {
 	    patchPath: string;

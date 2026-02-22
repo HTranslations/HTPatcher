@@ -7,7 +7,7 @@ import (
 
 // PatchDownloadRepository interface for patch download operations
 type PatchDownloadRepository interface {
-	Download(patchDownloadId string) (string, error)
+	Download(url string, fileName string) (string, error)
 }
 
 // DownloadService handles patch downloading
@@ -25,9 +25,9 @@ func NewDownloadService(patchRepo PatchDownloadRepository, logger Logger) *Downl
 }
 
 // DownloadPatch downloads a patch and returns its information
-func (s *DownloadService) DownloadPatch(patchDownloadId string, loadPatchFunc func(filePath string) (*domain.PatchInfo, error)) (*domain.PatchInfo, error) {
-	s.logger.Info(fmt.Sprintf("Downloading patch with download ID %s", patchDownloadId))
-	filePath, err := s.patchRepo.Download(patchDownloadId)
+func (s *DownloadService) DownloadPatch(url string, fileName string, loadPatchFunc func(filePath string) (*domain.PatchInfo, error)) (*domain.PatchInfo, error) {
+	s.logger.Info(fmt.Sprintf("Downloading patch %s", fileName))
+	filePath, err := s.patchRepo.Download(url, fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -38,4 +38,3 @@ func (s *DownloadService) DownloadPatch(patchDownloadId string, loadPatchFunc fu
 	// Use the provided function to load patch info
 	return loadPatchFunc(filePath)
 }
-
