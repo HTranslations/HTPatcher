@@ -21,12 +21,29 @@ func VisibleLength(text string) int {
 	return len(text) - totalPlaceholderLength
 }
 
-// Wrap wraps text to a specified width, accounting for RPG Maker placeholders
+// Wrap wraps text to a specified width, accounting for RPG Maker placeholders.
+// Existing newlines are preserved and reset the line width counter.
 func Wrap(text string, width int) string {
 	if width <= 0 {
 		width = 58
 	}
 
+	if text == "" {
+		return text
+	}
+
+	segments := strings.Split(text, "\n")
+	wrappedSegments := make([]string, 0, len(segments))
+
+	for _, segment := range segments {
+		wrappedSegments = append(wrappedSegments, wrapSegment(segment, width))
+	}
+
+	return strings.Join(wrappedSegments, "\n")
+}
+
+// wrapSegment wraps a single line of text (no newlines) to the specified width.
+func wrapSegment(text string, width int) string {
 	if text == "" || VisibleLength(text) <= width {
 		return text
 	}
