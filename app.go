@@ -161,7 +161,7 @@ func (a *App) FetchAllPatches() ([]domain.PatchEntry, error) {
 func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, launchAfterPatch bool, backupBeforePatch bool, injectMessageHide bool) error {
 	if backupBeforePatch {
 		a.Log("Backing up game data...")
-		err := a.backupService.BackupGameData(&gameInfo, &patchInfo)
+		err := a.backupService.BackupGameData(&gameInfo, &patchInfo, injectMessageHide)
 		if err != nil {
 			a.LogError("Failed to backup game data")
 			return err

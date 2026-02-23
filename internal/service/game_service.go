@@ -198,7 +198,12 @@ func (s *GameService) getMVMZGameInfo(gameInfo *domain.GameInfo) (*domain.GameIn
 	gameInfo.DataPath = dataPath
 	gameInfo.JsPath = jsPath
 	gameInfo.ImgPath = imgPath
-	gameInfo.GameVersion = "mv" // Default to MV, could be MZ but doesn't matter for patching
+	// Detect MV vs MZ by checking for MZ-specific core file
+	if _, err := os.Stat(filepath.Join(jsPath, "rmmz_core.js")); err == nil {
+		gameInfo.GameVersion = "mz"
+	} else {
+		gameInfo.GameVersion = "mv"
+	}
 
 	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
 	if err != nil {

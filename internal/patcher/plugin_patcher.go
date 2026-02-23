@@ -15,8 +15,11 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-//go:embed embedded/MessageWindowHidden.js
-var messageWindowHiddenJS []byte
+//go:embed embedded/MessageWindowHidden_MV.js
+var messageWindowHiddenMVJS []byte
+
+//go:embed embedded/MessageWindowHidden_MZ.js
+var messageWindowHiddenMZJS []byte
 
 // PluginPatcher handles plugin patching operations
 type PluginPatcher struct {
@@ -146,8 +149,17 @@ func (p *PluginPatcher) InjectMessageWindowHidden(ctx context.Context, gameInfo 
 		}
 	}
 
-	// Append the plugin entry
-	params := json.RawMessage(`{"triggerButton":"[\"右クリック\"]","triggerSwitch":"0","syncSwitch":"false","linkPictureNumbers":"[]","linkShowPictureNumbers":"[]","disableLinkSwitchId":"0","disableSwitchId":"0","disableInBattle":"false","disableInChoice":"true","restoreByDecision":"false"}`)
+	// Select the correct plugin version and parameters based on game version
+	var pluginJS []byte
+	var params json.RawMessage
+	if gameInfo.GameVersion == "mz" {
+		pluginJS = messageWindowHiddenMZJS
+		params = json.RawMessage(`{"triggerButton":"[\"右クリック\"]","triggerSwitch":"0","syncSwitch":"false","linkPictureNumbers":"[]","linkShowPictureNumbers":"[]","disableLinkSwitchId":"0","disableSwitchId":"0","disableInBattle":"false","disableInChoice":"true","restoreByDecision":"false"}`)
+	} else {
+		pluginJS = messageWindowHiddenMVJS
+		params = json.RawMessage(`{"triggerButton":"[\"右クリック\"]","triggerSwitch":"0","linkPictureNumbers":"[]","linkShowPictureNumbers":"[]","disableLinkSwitchId":"0","disableSwitchId":"0","disableInBattle":"false","disableInChoice":"true","restoreByDecision":"false"}`)
+	}
+
 	plugins = append(plugins, domain.PluginData{
 		Name:        "MessageWindowHidden",
 		Description: "Right-click to hide message window",
@@ -172,7 +184,7 @@ func (p *PluginPatcher) InjectMessageWindowHidden(ctx context.Context, gameInfo 
 
 	// Copy the JS file to the plugins directory
 	destPath := filepath.Join(gameInfo.JsPath, "plugins", "MessageWindowHidden.js")
-	if err := os.WriteFile(destPath, messageWindowHiddenJS, 0644); err != nil {
+	if err := os.WriteFile(destPath, pluginJS, 0644); err != nil {
 		return nil, err
 	}
 	relPath, _ = filepath.Rel(gameInfo.GameDir, destPath)

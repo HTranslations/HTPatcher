@@ -211,7 +211,7 @@
         return [this._goldWindow, this._nameBoxWindow,
             this._choiceListWindow, this._numberInputWindow,
             this._eventItemWindow
-        ].filter(Boolean);
+        ];
     };
 
     Window_Message.prototype.showAllWindow = function() {

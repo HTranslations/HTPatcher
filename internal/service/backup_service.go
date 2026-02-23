@@ -24,13 +24,13 @@ func NewBackupService(logger Logger) *BackupService {
 }
 
 // BackupGameData creates a backup of game data before patching
-func (s *BackupService) BackupGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+func (s *BackupService) BackupGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
 	// Route to VX Ace backup if needed
 	if gameInfo.GameVersion == "vxace" {
 		return s.backupVXAceGameData(gameInfo, patchInfo)
 	}
 
-	return s.backupMVMZGameData(gameInfo, patchInfo)
+	return s.backupMVMZGameData(gameInfo, patchInfo, injectMessageHide)
 }
 
 // backupVXAceGameData creates a backup for VX Ace games
@@ -94,7 +94,7 @@ func (s *BackupService) backupVXAceGameData(gameInfo *domain.GameInfo, patchInfo
 }
 
 // backupMVMZGameData creates a backup for MV/MZ games
-func (s *BackupService) backupMVMZGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
+func (s *BackupService) backupMVMZGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
 	filesToBackup := []string{}
 
 	// List all json files in the data folder
@@ -139,21 +139,22 @@ func (s *BackupService) backupMVMZGameData(gameInfo *domain.GameInfo, patchInfo 
 		filesToBackup = append(filesToBackup, relPath)
 	}
 
-	if len(patchInfo.Config.PluginsToPatch) > 0 {
+	if injectMessageHide || len(patchInfo.Config.PluginsToPatch) > 0 {
 		pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
 		pluginsJsRelPath, err := filepath.Rel(gameInfo.GameDir, pluginsJsPath)
 		if err != nil {
 			return err
 		}
 		filesToBackup = append(filesToBackup, pluginsJsRelPath)
-		for _, pluginToPatch := range patchInfo.Config.PluginsToPatch {
-			pluginJsPath := filepath.Join(gameInfo.JsPath, "plugins", pluginToPatch.Plugin+".js")
-			pluginJsRelPath, err := filepath.Rel(gameInfo.GameDir, pluginJsPath)
-			if err != nil {
-				return err
-			}
-			filesToBackup = append(filesToBackup, pluginJsRelPath)
+	}
+
+	for _, pluginToPatch := range patchInfo.Config.PluginsToPatch {
+		pluginJsPath := filepath.Join(gameInfo.JsPath, "plugins", pluginToPatch.Plugin+".js")
+		pluginJsRelPath, err := filepath.Rel(gameInfo.GameDir, pluginJsPath)
+		if err != nil {
+			return err
 		}
+		filesToBackup = append(filesToBackup, pluginJsRelPath)
 	}
 
 	filesToBackup = append(filesToBackup, patchInfo.Overrides...)
