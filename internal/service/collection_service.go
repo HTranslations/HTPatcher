@@ -97,6 +97,17 @@ func (s *CollectionService) SetGameTranslated(id string, isTranslated bool) erro
 	return errors.New("game not found")
 }
 
+// SetGameTranslatedByExePath marks a game as translated or not, looking it up by exe path
+func (s *CollectionService) SetGameTranslatedByExePath(exePath string, isTranslated bool) {
+	for i, game := range s.data.LocatedGames {
+		if game.ExePath == exePath {
+			s.data.LocatedGames[i].Translated = isTranslated
+			s.storage.Save(s.data)
+			return
+		}
+	}
+}
+
 // RemoveGameFromCollection removes a game from the collection
 func (s *CollectionService) RemoveGameFromCollection(id string) error {
 	for i, game := range s.data.LocatedGames {

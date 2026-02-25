@@ -260,7 +260,7 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Patch plugins.js
 	pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
-	err = s.pluginPatcher.UpdatePluginsJs(ctx, pluginsJsPath, patchInfo.Config.PluginsToPatch, patchInfo.Dictionary)
+	err = s.pluginPatcher.UpdatePluginsJs(ctx, pluginsJsPath, patchInfo.Config.PluginsToPatch, patchInfo.Dictionary, patchInfo.Config.KeyMode)
 	if err != nil {
 		s.logger.Error("Failed to update plugins.js")
 		return err

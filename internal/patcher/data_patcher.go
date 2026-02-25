@@ -14,20 +14,23 @@ func patchActors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, actor := range actors {
 		if actor == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(actor.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "actor_name", actor.Name); ok {
 			actor.Name = name
 		}
-		if nickname, ok := patchInfo.Dictionary[util.GetTranslationKey(actor.Nickname)]; ok {
+		if nickname, ok := util.DictLookup(dict, km, "actor_nickname", actor.Nickname); ok {
 			actor.Nickname = nickname
 		}
-		if profile, ok := patchInfo.Dictionary[util.GetTranslationKey(actor.Profile)]; ok {
+		if profile, ok := util.DictLookup(dict, km, "actor_profile", actor.Profile); ok {
 			actor.Profile = util.Wrap(util.NoNewline(profile), patchInfo.Config.WrapWidth)
 		}
-		if note, ok := patchInfo.Dictionary[util.GetTranslationKey(actor.Note)]; ok {
+		if note, ok := util.DictLookup(dict, km, "actor_note", actor.Note); ok {
 			actor.Note = note
 		}
 	}
@@ -42,14 +45,17 @@ func patchArmors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, armor := range armors {
 		if armor == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(armor.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "armor_name", armor.Name); ok {
 			armor.Name = name
 		}
-		if description, ok := patchInfo.Dictionary[util.GetTranslationKey(armor.Description)]; ok {
+		if description, ok := util.DictLookup(dict, km, "armor_description", armor.Description); ok {
 			armor.Description = util.Wrap(util.NoNewline(description), patchInfo.Config.WrapWidth)
 		}
 	}
@@ -64,14 +70,17 @@ func patchClasses(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, class := range classes {
 		if class == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(class.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "class_name", class.Name); ok {
 			class.Name = name
 		}
-		if note, ok := patchInfo.Dictionary[util.GetTranslationKey(class.Note)]; ok {
+		if note, ok := util.DictLookup(dict, km, "class_name", class.Note); ok {
 			class.Note = note
 		}
 	}
@@ -86,11 +95,14 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, commonEvent := range commonEvents {
 		if commonEvent == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(commonEvent.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "common_event_name", commonEvent.Name); ok {
 			commonEvent.Name = name
 		}
 		newCommands, err := patchCommands(commonEvent.List, patchInfo)
@@ -110,14 +122,17 @@ func patchEnemies(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, enemy := range enemies {
 		if enemy == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(enemy.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "enemy_name", enemy.Name); ok {
 			enemy.Name = name
 		}
-		if note, ok := patchInfo.Dictionary[util.GetTranslationKey(enemy.Note)]; ok {
+		if note, ok := util.DictLookup(dict, km, "enemy_note", enemy.Note); ok {
 			enemy.Note = note
 		}
 	}
@@ -132,17 +147,20 @@ func patchItems(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range items {
 		if item == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(item.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "item_name", item.Name); ok {
 			item.Name = name
 		}
-		if description, ok := patchInfo.Dictionary[util.GetTranslationKey(item.Description)]; ok {
+		if description, ok := util.DictLookup(dict, km, "item_description", item.Description); ok {
 			item.Description = util.Wrap(util.NoNewline(description), patchInfo.Config.WrapWidth)
 		}
-		if note, ok := patchInfo.Dictionary[util.GetTranslationKey(item.Note)]; ok {
+		if note, ok := util.DictLookup(dict, km, "item_note", item.Note); ok {
 			item.Note = util.NoNewline(note)
 		}
 	}
@@ -157,7 +175,10 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
-	if displayName, ok := patchInfo.Dictionary[util.GetTranslationKey(mapData.DisplayName)]; ok {
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
+	if displayName, ok := util.DictLookup(dict, km, "map_display_name", mapData.DisplayName); ok {
 		mapData.DisplayName = displayName
 	}
 
@@ -165,7 +186,7 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		if event == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(event.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "event_name", event.Name); ok {
 			event.Name = name
 		}
 		for i := range event.Pages {
@@ -187,20 +208,23 @@ func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, skill := range skills {
 		if skill == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(skill.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "skill_name", skill.Name); ok {
 			skill.Name = name
 		}
-		if description, ok := patchInfo.Dictionary[util.GetTranslationKey(skill.Description)]; ok {
+		if description, ok := util.DictLookup(dict, km, "skill_description", skill.Description); ok {
 			skill.Description = util.Wrap(util.NoNewline(description), patchInfo.Config.WrapWidth)
 		}
-		if message1, ok := patchInfo.Dictionary[util.GetTranslationKey(skill.Message1)]; ok {
+		if message1, ok := util.DictLookup(dict, km, "skill_message1", skill.Message1); ok {
 			skill.Message1 = util.Wrap(util.NoNewline(message1), patchInfo.Config.WrapWidth)
 		}
-		if message2, ok := patchInfo.Dictionary[util.GetTranslationKey(skill.Message2)]; ok {
+		if message2, ok := util.DictLookup(dict, km, "skill_message2", skill.Message2); ok {
 			skill.Message2 = util.Wrap(util.NoNewline(message2), patchInfo.Config.WrapWidth)
 		}
 	}
@@ -215,23 +239,26 @@ func patchStates(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, state := range states {
 		if state == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(state.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "state_name", state.Name); ok {
 			state.Name = name
 		}
-		if message1, ok := patchInfo.Dictionary[util.GetTranslationKey(state.Message1)]; ok {
+		if message1, ok := util.DictLookup(dict, km, "state_message1", state.Message1); ok {
 			state.Message1 = util.Wrap(util.NoNewline(message1), patchInfo.Config.WrapWidth)
 		}
-		if message2, ok := patchInfo.Dictionary[util.GetTranslationKey(state.Message2)]; ok {
+		if message2, ok := util.DictLookup(dict, km, "state_message2", state.Message2); ok {
 			state.Message2 = util.Wrap(util.NoNewline(message2), patchInfo.Config.WrapWidth)
 		}
-		if message3, ok := patchInfo.Dictionary[util.GetTranslationKey(state.Message3)]; ok {
+		if message3, ok := util.DictLookup(dict, km, "state_message3", state.Message3); ok {
 			state.Message3 = util.Wrap(util.NoNewline(message3), patchInfo.Config.WrapWidth)
 		}
-		if message4, ok := patchInfo.Dictionary[util.GetTranslationKey(state.Message4)]; ok {
+		if message4, ok := util.DictLookup(dict, km, "state_message4", state.Message4); ok {
 			state.Message4 = util.Wrap(util.NoNewline(message4), patchInfo.Config.WrapWidth)
 		}
 	}
@@ -246,73 +273,76 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	// Set locale if specified in patch config
 	if patchInfo.Config != nil && patchInfo.Config.Locale != "" {
 		system.Locale = patchInfo.Config.Locale
 	}
 
 	// Patch game title
-	if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.GameTitle)]; ok {
+	if translation, ok := util.DictLookup(dict, km, "game_title", system.GameTitle); ok {
 		system.GameTitle = translation
 	}
 
 	// Patch currency unit
-	if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.CurrencyUnit)]; ok {
+	if translation, ok := util.DictLookup(dict, km, "system_term", system.CurrencyUnit); ok {
 		system.CurrencyUnit = translation
 	}
 
 	// Patch armor types
 	for i := range system.ArmorTypes {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.ArmorTypes[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.ArmorTypes[i]); ok {
 			system.ArmorTypes[i] = translation
 		}
 	}
 
 	// Patch elements
 	for i := range system.Elements {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.Elements[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.Elements[i]); ok {
 			system.Elements[i] = translation
 		}
 	}
 
 	// Patch equip types
 	for i := range system.EquipTypes {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.EquipTypes[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.EquipTypes[i]); ok {
 			system.EquipTypes[i] = translation
 		}
 	}
 
 	// Patch skill types
 	for i := range system.SkillTypes {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.SkillTypes[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.SkillTypes[i]); ok {
 			system.SkillTypes[i] = translation
 		}
 	}
 
 	// Patch weapon types
 	for i := range system.WeaponTypes {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.WeaponTypes[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.WeaponTypes[i]); ok {
 			system.WeaponTypes[i] = translation
 		}
 	}
 
 	// Patch switches
 	for i := range system.Switches {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.Switches[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_switch", system.Switches[i]); ok {
 			system.Switches[i] = translation
 		}
 	}
 
 	// Patch variables
 	for i := range system.Variables {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.Variables[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_variable", system.Variables[i]); ok {
 			system.Variables[i] = translation
 		}
 	}
 
 	// Patch terms basic
 	for i := range system.Terms.Basic {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.Terms.Basic[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.Terms.Basic[i]); ok {
 			system.Terms.Basic[i] = translation
 		}
 	}
@@ -320,7 +350,7 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	// Patch terms commands
 	for i := range system.Terms.Commands {
 		if system.Terms.Commands[i] != nil {
-			if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(*system.Terms.Commands[i])]; ok {
+			if translation, ok := util.DictLookup(dict, km, "system_term", *system.Terms.Commands[i]); ok {
 				system.Terms.Commands[i] = &translation
 			}
 		}
@@ -328,72 +358,72 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 
 	// Patch terms params
 	for i := range system.Terms.Params {
-		if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(system.Terms.Params[i])]; ok {
+		if translation, ok := util.DictLookup(dict, km, "system_term", system.Terms.Params[i]); ok {
 			system.Terms.Params[i] = translation
 		}
 	}
 
 	// Patch all term messages
-	patchTermMessage(&system.Terms.Messages.AlwaysDash, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.CommandRemember, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.TouchUI, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.BgmVolume, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.BgsVolume, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.MeVolume, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.SeVolume, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Possession, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ExpTotal, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ExpNext, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.SaveMessage, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.LoadMessage, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.File, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Autosave, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.PartyName, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Emerge, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Preemptive, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Surprise, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EscapeStart, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EscapeFailure, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Victory, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Defeat, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ObtainExp, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ObtainGold, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ObtainItem, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.LevelUp, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ObtainSkill, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.UseItem, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.CriticalToEnemy, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.CriticalToActor, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorDamage, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorRecovery, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorGain, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorLoss, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorDrain, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorNoDamage, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActorNoHit, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyDamage, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyRecovery, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyGain, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyLoss, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyDrain, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyNoDamage, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.EnemyNoHit, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Evasion, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.MagicEvasion, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.MagicReflection, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.CounterAttack, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.Substitute, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.BuffAdd, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.DebuffAdd, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.BuffRemove, patchInfo.Dictionary)
-	patchTermMessage(&system.Terms.Messages.ActionFailure, patchInfo.Dictionary)
+	patchTermMessage(&system.Terms.Messages.AlwaysDash, dict, km)
+	patchTermMessage(&system.Terms.Messages.CommandRemember, dict, km)
+	patchTermMessage(&system.Terms.Messages.TouchUI, dict, km)
+	patchTermMessage(&system.Terms.Messages.BgmVolume, dict, km)
+	patchTermMessage(&system.Terms.Messages.BgsVolume, dict, km)
+	patchTermMessage(&system.Terms.Messages.MeVolume, dict, km)
+	patchTermMessage(&system.Terms.Messages.SeVolume, dict, km)
+	patchTermMessage(&system.Terms.Messages.Possession, dict, km)
+	patchTermMessage(&system.Terms.Messages.ExpTotal, dict, km)
+	patchTermMessage(&system.Terms.Messages.ExpNext, dict, km)
+	patchTermMessage(&system.Terms.Messages.SaveMessage, dict, km)
+	patchTermMessage(&system.Terms.Messages.LoadMessage, dict, km)
+	patchTermMessage(&system.Terms.Messages.File, dict, km)
+	patchTermMessage(&system.Terms.Messages.Autosave, dict, km)
+	patchTermMessage(&system.Terms.Messages.PartyName, dict, km)
+	patchTermMessage(&system.Terms.Messages.Emerge, dict, km)
+	patchTermMessage(&system.Terms.Messages.Preemptive, dict, km)
+	patchTermMessage(&system.Terms.Messages.Surprise, dict, km)
+	patchTermMessage(&system.Terms.Messages.EscapeStart, dict, km)
+	patchTermMessage(&system.Terms.Messages.EscapeFailure, dict, km)
+	patchTermMessage(&system.Terms.Messages.Victory, dict, km)
+	patchTermMessage(&system.Terms.Messages.Defeat, dict, km)
+	patchTermMessage(&system.Terms.Messages.ObtainExp, dict, km)
+	patchTermMessage(&system.Terms.Messages.ObtainGold, dict, km)
+	patchTermMessage(&system.Terms.Messages.ObtainItem, dict, km)
+	patchTermMessage(&system.Terms.Messages.LevelUp, dict, km)
+	patchTermMessage(&system.Terms.Messages.ObtainSkill, dict, km)
+	patchTermMessage(&system.Terms.Messages.UseItem, dict, km)
+	patchTermMessage(&system.Terms.Messages.CriticalToEnemy, dict, km)
+	patchTermMessage(&system.Terms.Messages.CriticalToActor, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorDamage, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorRecovery, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorGain, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorLoss, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorDrain, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorNoDamage, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActorNoHit, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyDamage, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyRecovery, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyGain, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyLoss, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyDrain, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyNoDamage, dict, km)
+	patchTermMessage(&system.Terms.Messages.EnemyNoHit, dict, km)
+	patchTermMessage(&system.Terms.Messages.Evasion, dict, km)
+	patchTermMessage(&system.Terms.Messages.MagicEvasion, dict, km)
+	patchTermMessage(&system.Terms.Messages.MagicReflection, dict, km)
+	patchTermMessage(&system.Terms.Messages.CounterAttack, dict, km)
+	patchTermMessage(&system.Terms.Messages.Substitute, dict, km)
+	patchTermMessage(&system.Terms.Messages.BuffAdd, dict, km)
+	patchTermMessage(&system.Terms.Messages.DebuffAdd, dict, km)
+	patchTermMessage(&system.Terms.Messages.BuffRemove, dict, km)
+	patchTermMessage(&system.Terms.Messages.ActionFailure, dict, km)
 
 	return json.Marshal(system)
 }
 
 // patchTermMessage is a helper to patch a single term message
-func patchTermMessage(message *string, dictionary map[string]string) {
-	if translation, ok := dictionary[util.GetTranslationKey(*message)]; ok {
+func patchTermMessage(message *string, dictionary map[string]string, keyMode string) {
+	if translation, ok := util.DictLookup(dictionary, keyMode, "system_message", *message); ok {
 		*message = translation
 	}
 }
@@ -405,11 +435,14 @@ func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, troop := range troops {
 		if troop == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(troop.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "troop_name", troop.Name); ok {
 			troop.Name = name
 		}
 		for i := range troop.Pages {
@@ -431,14 +464,17 @@ func patchWeapons(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, err
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, weapon := range weapons {
 		if weapon == nil {
 			continue
 		}
-		if name, ok := patchInfo.Dictionary[util.GetTranslationKey(weapon.Name)]; ok {
+		if name, ok := util.DictLookup(dict, km, "weapon_name", weapon.Name); ok {
 			weapon.Name = name
 		}
-		if description, ok := patchInfo.Dictionary[util.GetTranslationKey(weapon.Description)]; ok {
+		if description, ok := util.DictLookup(dict, km, "weapon_description", weapon.Description); ok {
 			weapon.Description = util.Wrap(util.NoNewline(description), patchInfo.Config.WrapWidth)
 		}
 	}

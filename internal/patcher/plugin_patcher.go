@@ -56,7 +56,7 @@ func (p *PluginPatcher) ApplyReplaceRule(ctx context.Context, jsPath string, plu
 }
 
 // UpdatePluginsJs updates the plugins.js file with translated plugin parameters
-func (p *PluginPatcher) UpdatePluginsJs(ctx context.Context, pluginsJsPath string, pluginsToPatch []domain.PluginToPatch, dictionary map[string]string) error {
+func (p *PluginPatcher) UpdatePluginsJs(ctx context.Context, pluginsJsPath string, pluginsToPatch []domain.PluginToPatch, dictionary map[string]string, keyMode string) error {
 	data, err := os.ReadFile(pluginsJsPath)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (p *PluginPatcher) UpdatePluginsJs(ctx context.Context, pluginsJsPath strin
 
 				L := lua.NewState()
 				defer L.Close()
-				L.SetGlobal("getTranslationByKey", L.NewFunction(makeGetTranslationByKey(dictionary)))
+				L.SetGlobal("getTranslationByKey", L.NewFunction(makeGetTranslationByKey(dictionary, keyMode)))
 				L.SetGlobal("jsonDecode", L.NewFunction(jsonDecode))
 				L.SetGlobal("jsonEncode", L.NewFunction(jsonEncode))
 				if err := L.DoString(pluginToPatch.ParametersPatchScript); err != nil {
@@ -195,11 +195,14 @@ func (p *PluginPatcher) InjectMessageWindowHidden(ctx context.Context, gameInfo 
 }
 
 // Lua helper functions
-func makeGetTranslationByKey(dictionary map[string]string) func(*lua.LState) int {
+func makeGetTranslationByKey(dictionary map[string]string, keyMode string) func(*lua.LState) int {
 	return func(L *lua.LState) int {
 		original := L.ToString(1)
-		key := util.GetTranslationKey(original)
-		translation, ok := dictionary[key]
+		// Try both plugin entry types since Lua scripts don't know which type was used
+		translation, ok := util.DictLookup(dictionary, keyMode, "plugin", original)
+		if !ok {
+			translation, ok = util.DictLookup(dictionary, keyMode, "plugin_parameter", original)
+		}
 		if !ok {
 			translation = original
 		}

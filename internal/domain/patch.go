@@ -15,6 +15,7 @@ type Config struct {
 	VariablesToPatch  []int              `json:"variablesToPatch"`
 	WrapWidth         int                `json:"wrapWidth"`
 	Version           int                `json:"version"`
+	KeyMode           string             `json:"keyMode"`
 	ParametersToPatch []ParameterToPatch `json:"parametersToPatch"`
 	PluginsToPatch    []PluginToPatch    `json:"pluginsToPatch"`
 	CreditsLocation   string             `json:"creditsLocation"`

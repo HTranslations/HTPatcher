@@ -120,10 +120,42 @@ func NoNewline(text string) string {
 	return strings.ReplaceAll(text, "\n", " ")
 }
 
-// GetTranslationKey generates a normalized key for dictionary lookup
+// GetTranslationKey generates a normalized key for dictionary lookup (legacy, untyped)
 func GetTranslationKey(text string) string {
 	text = strings.ReplaceAll(text, "\n", "")
 	text = strings.ReplaceAll(text, " ", "")
 	text = strings.ReplaceAll(text, "\u3000", "") // full-width space
 	return strings.ToLower(text)
+}
+
+// GetTypedTranslationKey generates a type-prefixed key for dictionary lookup
+func GetTypedTranslationKey(entryType string, text string) string {
+	normalized := GetTranslationKey(text)
+	if normalized == "" {
+		return ""
+	}
+	return entryType + ":" + normalized
+}
+
+// DictLookup looks up a translation in the dictionary, using typed keys when keyMode is "typed",
+// falling back to legacy untyped keys for backward compatibility.
+func DictLookup(dictionary map[string]string, keyMode string, entryType string, text string) (string, bool) {
+	if keyMode == "typed" {
+		key := GetTypedTranslationKey(entryType, text)
+		if translation, ok := dictionary[key]; ok {
+			return translation, true
+		}
+		// Fallback to untyped key for backward compat within mixed patches
+		key = GetTranslationKey(text)
+		if translation, ok := dictionary[key]; ok {
+			return translation, true
+		}
+		return "", false
+	}
+	// Legacy mode: untyped keys
+	key := GetTranslationKey(text)
+	if translation, ok := dictionary[key]; ok {
+		return translation, true
+	}
+	return "", false
 }

@@ -206,6 +206,7 @@ export namespace domain {
 	    variablesToPatch: number[];
 	    wrapWidth: number;
 	    version: number;
+	    keyMode: string;
 	    parametersToPatch: ParameterToPatch[];
 	    pluginsToPatch: PluginToPatch[];
 	    creditsLocation: string;
@@ -221,6 +222,7 @@ export namespace domain {
 	        this.variablesToPatch = source["variablesToPatch"];
 	        this.wrapWidth = source["wrapWidth"];
 	        this.version = source["version"];
+	        this.keyMode = source["keyMode"];
 	        this.parametersToPatch = this.convertValues(source["parametersToPatch"], ParameterToPatch);
 	        this.pluginsToPatch = this.convertValues(source["pluginsToPatch"], PluginToPatch);
 	        this.creditsLocation = source["creditsLocation"];

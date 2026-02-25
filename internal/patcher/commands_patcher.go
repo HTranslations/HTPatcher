@@ -11,11 +11,11 @@ import (
 
 // patchVariableValue handles translation of variable assignment values
 // Supports double-quoted strings, single-quoted strings, and single-quoted JSON arrays
-func patchVariableValue(value string, dictionary map[string]string) string {
+func patchVariableValue(value string, dictionary map[string]string, keyMode string) string {
 	// Handle double-quoted strings: "text"
 	if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"") {
 		s := value[1 : len(value)-1]
-		if translation, ok := dictionary[util.GetTranslationKey(s)]; ok {
+		if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", s); ok {
 			return "\"" + translation + "\""
 		}
 		return value
@@ -24,7 +24,7 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 	// Handle double-quoted strings with semicolon: "text";
 	if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\";") {
 		s := value[1 : len(value)-2]
-		if translation, ok := dictionary[util.GetTranslationKey(s)]; ok {
+		if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", s); ok {
 			return "\"" + translation + "\";"
 		}
 		return value
@@ -41,7 +41,7 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 				newArray := make([]any, 0, len(jsonArray))
 				for _, item := range jsonArray {
 					if str, ok := item.(string); ok {
-						if translation, ok := dictionary[util.GetTranslationKey(str)]; ok {
+						if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", str); ok {
 							newArray = append(newArray, translation)
 						} else {
 							newArray = append(newArray, str)
@@ -58,7 +58,7 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 		}
 
 		// Regular single-quoted string
-		if translation, ok := dictionary[util.GetTranslationKey(s)]; ok {
+		if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", s); ok {
 			return "'" + translation + "'"
 		}
 		return value
@@ -68,11 +68,11 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 }
 
 // patchParameterValue recursively traverses data structures and applies translations to strings
-func patchParameterValue(value any, dictionary map[string]string) any {
+func patchParameterValue(value any, dictionary map[string]string, keyMode string) any {
 	switch v := value.(type) {
 	case string:
 		// Base case: translate string if found in dictionary
-		if translation, ok := dictionary[util.GetTranslationKey(v)]; ok {
+		if translation, ok := util.DictLookup(dictionary, keyMode, "plugin_parameter", v); ok {
 			return translation
 		}
 		return v
@@ -80,21 +80,21 @@ func patchParameterValue(value any, dictionary map[string]string) any {
 		// Recursive case: process array elements
 		result := make([]any, len(v))
 		for i, item := range v {
-			result[i] = patchParameterValue(item, dictionary)
+			result[i] = patchParameterValue(item, dictionary, keyMode)
 		}
 		return result
 	case map[string]any:
 		// Recursive case: process object properties
 		result := make(map[string]any)
 		for key, val := range v {
-			result[key] = patchParameterValue(val, dictionary)
+			result[key] = patchParameterValue(val, dictionary, keyMode)
 		}
 		return result
 	case *util.OrderedMap:
 		// Recursive case: process ordered map properties while preserving key order
 		result := util.NewOrderedMap()
 		for _, key := range v.Keys {
-			result.Set(key, patchParameterValue(v.Values[key], dictionary))
+			result.Set(key, patchParameterValue(v.Values[key], dictionary, keyMode))
 		}
 		return result
 	default:
@@ -109,6 +109,9 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 	commandIndex := 0
 	last101CommandHasSpeakerThumbnail := false
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for commandIndex < len(commands) {
 		command := commands[commandIndex]
 
@@ -116,7 +119,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 		if command.Code == 101 {
 			if len(command.Parameters) > 4 {
 				if key, ok := command.Parameters[4].(string); ok {
-					if speakerName, ok := patchInfo.Dictionary[util.GetTranslationKey(key)]; ok {
+					if speakerName, ok := util.DictLookup(dict, km, "speaker", key); ok {
 						command.Parameters[4] = speakerName
 					}
 				}
@@ -149,8 +152,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			}
 			commandIndex--
 
-			translationKey := util.GetTranslationKey(fullText)
-			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
+			if translation, ok := util.DictLookup(dict, km, "dialogue", fullText); ok {
 				dialogueCommands[0].Parameters[0] = util.Wrap(translation, wrapWidth)
 				// Only keep the first command in the dialogue
 				for k := (commandIndex - len(dialogueCommands) + 2); k <= commandIndex; k++ {
@@ -174,8 +176,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			}
 			commandIndex--
 
-			translationKey := util.GetTranslationKey(fullText)
-			if translation, ok := patchInfo.Dictionary[translationKey]; ok {
+			if translation, ok := util.DictLookup(dict, km, "message", fullText); ok {
 				scrollingCommands[0].Parameters[0] = util.Wrap(util.NoNewline(translation), patchInfo.Config.WrapWidth)
 				// Only keep the first command
 				for k := (commandIndex - len(scrollingCommands) + 2); k <= commandIndex; k++ {
@@ -189,7 +190,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			if choices, ok := command.Parameters[0].([]any); ok {
 				for i, choice := range choices {
 					if choice, ok := choice.(string); ok {
-						if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(choice)]; ok {
+						if translation, ok := util.DictLookup(dict, km, "choice", choice); ok {
 							command.Parameters[0].([]any)[i] = translation
 						}
 					}
@@ -200,7 +201,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 		// Command 108 is comment and param 0 is the text
 		if command.Code == 108 {
 			if text, ok := command.Parameters[0].(string); ok {
-				if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(text)]; ok {
+				if translation, ok := util.DictLookup(dict, km, "comment", text); ok {
 					command.Parameters[0] = translation
 				}
 			}
@@ -209,7 +210,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 		// Command 408 is choice description and param 0 is the description
 		if command.Code == 408 {
 			if description, ok := command.Parameters[0].(string); ok {
-				if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(description)]; ok {
+				if translation, ok := util.DictLookup(dict, km, "comment", description); ok {
 					command.Parameters[0] = util.Wrap(util.NoNewline(translation), patchInfo.Config.WrapWidth)
 				}
 			}
@@ -231,7 +232,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 					if slices.Contains(patchInfo.Config.VariablesToPatch, int(varID)) {
 						// Check if param 4 is a string value
 						if value, ok := command.Parameters[4].(string); ok {
-							command.Parameters[4] = patchVariableValue(value, patchInfo.Dictionary)
+							command.Parameters[4] = patchVariableValue(value, dict, km)
 						}
 					}
 				}
@@ -258,7 +259,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			}
 
 			// Look up translation
-			if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(fullScript)]; ok {
+			if translation, ok := util.DictLookup(dict, km, "script", fullScript); ok {
 				// Put entire translation in 355 command
 				command.Parameters[0] = translation
 
@@ -281,16 +282,16 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 								switch parameter.RootType {
 								case "string":
 									if options, ok := command.Parameters[3].(string); ok {
-										if translation, ok := patchInfo.Dictionary[util.GetTranslationKey(options)]; ok {
+										if translation, ok := util.DictLookup(dict, km, "plugin_parameter", options); ok {
 											command.Parameters[3] = util.Wrap(translation, patchInfo.Config.WrapWidth)
 										}
 									}
 								case "array":
 									if options, ok := command.Parameters[3].([]any); ok {
-										command.Parameters[3] = patchParameterValue(options, patchInfo.Dictionary)
+										command.Parameters[3] = patchParameterValue(options, dict, km)
 									}
 								case "object":
-									command.Parameters[3] = patchParameterValue(command.Parameters[3], patchInfo.Dictionary)
+									command.Parameters[3] = patchParameterValue(command.Parameters[3], dict, km)
 								}
 							}
 						}

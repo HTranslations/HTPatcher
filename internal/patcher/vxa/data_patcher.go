@@ -23,6 +23,9 @@ func patchActors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -32,10 +35,10 @@ func patchActors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "nickname", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "description", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "actor_name", false, 0)
+		patchStringProperty(obj, "nickname", dict, km, "actor_nickname", false, 0)
+		patchStringProperty(obj, "description", dict, km, "actor_profile", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "note", dict, km, "actor_note", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -53,6 +56,9 @@ func patchClasses(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -62,8 +68,8 @@ func patchClasses(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "class_name", false, 0)
+		patchStringProperty(obj, "note", dict, km, "class_name", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -81,6 +87,9 @@ func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -90,11 +99,11 @@ func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "description", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "message1", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "message2", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "skill_name", false, 0)
+		patchStringProperty(obj, "description", dict, km, "skill_description", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "message1", dict, km, "skill_message1", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "message2", dict, km, "skill_message2", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "note", dict, km, "skill_name", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -112,6 +121,9 @@ func patchItems(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -121,9 +133,9 @@ func patchItems(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "description", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "item_name", false, 0)
+		patchStringProperty(obj, "description", dict, km, "item_description", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "note", dict, km, "item_note", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -141,6 +153,9 @@ func patchWeapons(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -150,9 +165,9 @@ func patchWeapons(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "description", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "weapon_name", false, 0)
+		patchStringProperty(obj, "description", dict, km, "weapon_description", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "note", dict, km, "weapon_name", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -170,6 +185,9 @@ func patchArmors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -179,9 +197,9 @@ func patchArmors(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "description", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "armor_name", false, 0)
+		patchStringProperty(obj, "description", dict, km, "armor_description", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "note", dict, km, "armor_name", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -199,6 +217,9 @@ func patchEnemies(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -208,8 +229,8 @@ func patchEnemies(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "enemy_name", false, 0)
+		patchStringProperty(obj, "note", dict, km, "enemy_note", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -227,6 +248,9 @@ func patchStates(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -236,12 +260,12 @@ func patchStates(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
-		patchStringProperty(obj, "message1", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "message2", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "message3", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "message4", patchInfo.Dictionary, true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "state_name", false, 0)
+		patchStringProperty(obj, "message1", dict, km, "state_message1", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "message2", dict, km, "state_message2", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "message3", dict, km, "state_message3", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "message4", dict, km, "state_message4", true, patchInfo.Config.WrapWidth)
+		patchStringProperty(obj, "note", dict, km, "state_note", false, 0)
 	}
 
 	return marshal.Write(arr)
@@ -259,6 +283,9 @@ func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -268,7 +295,7 @@ func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "troop_name", false, 0)
 
 		// Patch pages
 		pages := obj.GetArray("pages")
@@ -296,6 +323,9 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		if item == nil {
 			continue
@@ -305,7 +335,7 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 			continue
 		}
 
-		patchStringProperty(obj, "name", patchInfo.Dictionary, false, 0)
+		patchStringProperty(obj, "name", dict, km, "common_event_name", false, 0)
 		patchEventCommands(obj, patchInfo)
 	}
 
@@ -324,8 +354,11 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected RubyObject, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	// Patch display name
-	patchStringProperty(obj, "display_name", patchInfo.Dictionary, false, 0)
+	patchStringProperty(obj, "display_name", dict, km, "map_display_name", false, 0)
 
 	// Patch events - VX Ace uses a hash/map, not an array
 	eventsMap := obj.GetMap("events")
@@ -337,7 +370,7 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			}
 
 			// Patch event name
-			patchStringProperty(eventObj, "name", patchInfo.Dictionary, false, 0)
+			patchStringProperty(eventObj, "name", dict, km, "event_name", false, 0)
 
 			// Patch event pages
 			pages := eventObj.GetArray("pages")
@@ -366,28 +399,31 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected RubyObject, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	// Patch game title
-	patchStringProperty(obj, "game_title", patchInfo.Dictionary, false, 0)
+	patchStringProperty(obj, "game_title", dict, km, "game_title", false, 0)
 
 	// Patch currency unit
-	patchStringProperty(obj, "currency_unit", patchInfo.Dictionary, false, 0)
+	patchStringProperty(obj, "currency_unit", dict, km, "system_term", false, 0)
 
 	// Patch string arrays
-	patchStringArray(obj, "elements", patchInfo.Dictionary)
-	patchStringArray(obj, "skill_types", patchInfo.Dictionary)
-	patchStringArray(obj, "weapon_types", patchInfo.Dictionary)
-	patchStringArray(obj, "armor_types", patchInfo.Dictionary)
-	patchStringArray(obj, "equip_types", patchInfo.Dictionary)
-	patchStringArray(obj, "switches", patchInfo.Dictionary)
-	patchStringArray(obj, "variables", patchInfo.Dictionary)
+	patchStringArray(obj, "elements", dict, km, "system_term")
+	patchStringArray(obj, "skill_types", dict, km, "system_term")
+	patchStringArray(obj, "weapon_types", dict, km, "system_term")
+	patchStringArray(obj, "armor_types", dict, km, "system_term")
+	patchStringArray(obj, "equip_types", dict, km, "system_term")
+	patchStringArray(obj, "switches", dict, km, "system_switch")
+	patchStringArray(obj, "variables", dict, km, "system_variable")
 
 	// Patch terms object
 	termsObj := obj.GetObject("terms")
 	if termsObj != nil {
-		patchStringArray(termsObj, "basic", patchInfo.Dictionary)
-		patchStringArray(termsObj, "params", patchInfo.Dictionary)
-		patchStringArray(termsObj, "etypes", patchInfo.Dictionary)
-		patchStringArray(termsObj, "commands", patchInfo.Dictionary)
+		patchStringArray(termsObj, "basic", dict, km, "system_term")
+		patchStringArray(termsObj, "params", dict, km, "system_term")
+		patchStringArray(termsObj, "etypes", dict, km, "system_term")
+		patchStringArray(termsObj, "commands", dict, km, "system_term")
 	}
 
 	return marshal.Write(obj)
@@ -396,7 +432,7 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 // Helper functions
 
 // patchStringProperty patches a string property on a RubyObject
-func patchStringProperty(obj *marshal.RubyObject, key string, dictionary map[string]string, wrap bool, wrapWidth int) {
+func patchStringProperty(obj *marshal.RubyObject, key string, dictionary map[string]string, keyMode string, entryType string, wrap bool, wrapWidth int) {
 	if obj == nil || obj.Properties == nil {
 		return
 	}
@@ -411,8 +447,7 @@ func patchStringProperty(obj *marshal.RubyObject, key string, dictionary map[str
 		return
 	}
 
-	translationKey := util.GetTranslationKey(str)
-	if translation, exists := dictionary[translationKey]; exists {
+	if translation, exists := util.DictLookup(dictionary, keyMode, entryType, str); exists {
 		if wrap && wrapWidth > 0 {
 			translation = util.Wrap(util.NoNewline(translation), wrapWidth)
 		}
@@ -421,7 +456,7 @@ func patchStringProperty(obj *marshal.RubyObject, key string, dictionary map[str
 }
 
 // patchStringArray patches translatable strings in an array property
-func patchStringArray(obj *marshal.RubyObject, key string, dictionary map[string]string) {
+func patchStringArray(obj *marshal.RubyObject, key string, dictionary map[string]string, keyMode string, entryType string) {
 	if obj == nil || obj.Properties == nil {
 		return
 	}
@@ -433,8 +468,7 @@ func patchStringArray(obj *marshal.RubyObject, key string, dictionary map[string
 
 	for i, v := range arr {
 		if s, ok := v.(string); ok {
-			translationKey := util.GetTranslationKey(s)
-			if translation, exists := dictionary[translationKey]; exists {
+			if translation, exists := util.DictLookup(dictionary, keyMode, entryType, s); exists {
 				arr[i] = translation
 			}
 		}
@@ -508,6 +542,9 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 	commandIndex := 0
 	last101HasThumbnail := false
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for commandIndex < len(commands) {
 		command := commands[commandIndex]
 		code := command.getCode()
@@ -517,8 +554,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 		if code == 101 {
 			if len(params) > 4 {
 				if key, ok := params[4].(string); ok {
-					translationKey := util.GetTranslationKey(key)
-					if translation, exists := patchInfo.Dictionary[translationKey]; exists {
+					if translation, exists := util.DictLookup(dict, km, "speaker", key); exists {
 						command.setParameter(4, translation)
 					}
 				}
@@ -554,8 +590,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 			}
 			commandIndex--
 
-			translationKey := util.GetTranslationKey(fullText)
-			if translation, exists := patchInfo.Dictionary[translationKey]; exists {
+			if translation, exists := util.DictLookup(dict, km, "dialogue", fullText); exists {
 				dialogueCommands[0].setParameter(0, util.Wrap(translation, wrapWidth))
 				// Mark subsequent 401 commands for deletion
 				startIdx := commandIndex - len(dialogueCommands) + 2
@@ -583,8 +618,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 			}
 			commandIndex--
 
-			translationKey := util.GetTranslationKey(fullText)
-			if translation, exists := patchInfo.Dictionary[translationKey]; exists {
+			if translation, exists := util.DictLookup(dict, km, "message", fullText); exists {
 				scrollingCommands[0].setParameter(0, util.Wrap(translation, patchInfo.Config.WrapWidth))
 				// Mark subsequent 405 commands for deletion
 				startIdx := commandIndex - len(scrollingCommands) + 2
@@ -600,7 +634,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 				if choices, ok := params[0].([]interface{}); ok {
 					for i, choice := range choices {
 						if choiceStr, ok := choice.(string); ok {
-							if translation, exists := patchInfo.Dictionary[util.GetTranslationKey(choiceStr)]; exists {
+							if translation, exists := util.DictLookup(dict, km, "choice", choiceStr); exists {
 								choices[i] = translation
 							}
 						}
@@ -613,7 +647,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 		if code == 108 {
 			if len(params) > 0 {
 				if text, ok := params[0].(string); ok {
-					if translation, exists := patchInfo.Dictionary[util.GetTranslationKey(text)]; exists {
+					if translation, exists := util.DictLookup(dict, km, "comment", text); exists {
 						command.setParameter(0, translation)
 					}
 				}
@@ -624,7 +658,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 		if code == 408 {
 			if len(params) > 0 {
 				if description, ok := params[0].(string); ok {
-					if translation, exists := patchInfo.Dictionary[util.GetTranslationKey(description)]; exists {
+					if translation, exists := util.DictLookup(dict, km, "comment", description); exists {
 						command.setParameter(0, util.Wrap(util.NoNewline(translation), patchInfo.Config.WrapWidth))
 					}
 				}
@@ -663,7 +697,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 			}
 
 			// Look up translation
-			if translation, exists := patchInfo.Dictionary[util.GetTranslationKey(fullScript)]; exists {
+			if translation, exists := util.DictLookup(dict, km, "script", fullScript); exists {
 				command.setParameter(0, translation)
 				// Mark all 655 commands for deletion
 				for i := startOfContinuation; i < nextIndex; i++ {
@@ -681,7 +715,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 					for _, patchVarID := range patchInfo.Config.VariablesToPatch {
 						if varID == patchVarID {
 							if value, ok := params[4].(string); ok {
-								patched := patchVariableValue(value, patchInfo.Dictionary)
+								patched := patchVariableValue(value, dict, km)
 								command.setParameter(4, patched)
 							}
 							break
@@ -706,11 +740,11 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 }
 
 // patchVariableValue patches variable assignment values (for plugin-specific text)
-func patchVariableValue(value string, dictionary map[string]string) string {
+func patchVariableValue(value string, dictionary map[string]string, keyMode string) string {
 	// Handle double-quoted strings: "text"
 	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
 		s := value[1 : len(value)-1]
-		if translation, ok := dictionary[util.GetTranslationKey(s)]; ok {
+		if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", s); ok {
 			return "\"" + translation + "\""
 		}
 		return value
@@ -723,13 +757,13 @@ func patchVariableValue(value string, dictionary map[string]string) string {
 		if len(s) >= 2 && s[0] == '[' && s[len(s)-1] == ']' {
 			// Parse JSON array and translate each string element
 			// Simplified handling - just translate the whole thing if found
-			if translation, ok := dictionary[util.GetTranslationKey(s)]; ok {
+			if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", s); ok {
 				return "'" + translation + "'"
 			}
 			return value
 		}
 		// Regular single-quoted string
-		if translation, ok := dictionary[util.GetTranslationKey(s)]; ok {
+		if translation, ok := util.DictLookup(dictionary, keyMode, "variable_value", s); ok {
 			return "'" + translation + "'"
 		}
 		return value
@@ -768,6 +802,9 @@ func patchScripts(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		return nil, fmt.Errorf("expected array, got %T", raw)
 	}
 
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
 	for _, item := range arr {
 		entry, ok := item.([]interface{})
 		if !ok || len(entry) < 3 {
@@ -792,8 +829,7 @@ func patchScripts(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		}
 
 		// Look up in dictionary
-		translationKey := util.GetTranslationKey(sourceStr)
-		if translation, exists := patchInfo.Dictionary[translationKey]; exists {
+		if translation, exists := util.DictLookup(dict, km, "script", sourceStr); exists {
 			// Recompress the translated source
 			compressed, err := compressZlib([]byte(translation))
 			if err != nil {
