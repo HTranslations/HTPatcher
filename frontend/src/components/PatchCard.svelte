@@ -1,19 +1,22 @@
 <script lang="ts">
   import { domain } from "../../wailsjs/go/models.js";
   import { BrowserOpenURL } from "../../wailsjs/runtime/runtime.js";
-  import { getDlsiteImageUrl } from "../lib/utils.js";
-  
+  import { getThumbnailUrl, getStoreLinkLabel } from "../lib/utils.js";
+
   export let patch: domain.PatchEntry;
   export let index: number;
+
+  $: thumbnailUrl = getThumbnailUrl(patch.store, patch.storeCode, patch.thumbnailId, patch.thumbnailFileName);
+  $: storeLinkLabel = getStoreLinkLabel(patch.store);
 </script>
 
 <div class="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors">
   <div class="flex gap-3 py-3 px-3">
     <!-- Thumbnail -->
     <div class="shrink-0 w-40 self-stretch">
-      {#if patch.rjCode && getDlsiteImageUrl(patch.rjCode)}
+      {#if thumbnailUrl}
         <img
-          src={getDlsiteImageUrl(patch.rjCode)}
+          src={thumbnailUrl}
           alt={patch.title}
           class="w-full h-full object-cover bg-zinc-800 border border-zinc-700"
           onerror={(e) => {
@@ -53,13 +56,13 @@
       </div>
       <div class="flex items-center justify-between gap-3 mt-auto">
         <div class="flex items-center gap-3">
-          {#if patch.rjCode}
+          {#if patch.storeCode}
             <div class="flex items-center gap-2 text-xs text-zinc-500 font-mono">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
               </svg>
-              <span>{patch.rjCode}</span>
+              <span>{patch.storeCode}</span>
             </div>
           {/if}
           {#if patch.storeLink}
@@ -70,7 +73,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
               </svg>
-              <span>View on DLsite</span>
+              <span>{storeLinkLabel}</span>
             </button>
           {/if}
         </div>
@@ -83,4 +86,3 @@
     </div>
   </div>
 </div>
-

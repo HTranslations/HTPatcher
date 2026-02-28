@@ -277,6 +277,7 @@ export namespace domain {
 	    gameDir: string;
 	    exePath: string;
 	    rjCode: string;
+	    storeCode: string;
 	    friendlyName: string;
 	    tags: string[];
 	    translated: boolean;
@@ -293,6 +294,7 @@ export namespace domain {
 	        this.gameDir = source["gameDir"];
 	        this.exePath = source["exePath"];
 	        this.rjCode = source["rjCode"];
+	        this.storeCode = source["storeCode"];
 	        this.friendlyName = source["friendlyName"];
 	        this.tags = source["tags"];
 	        this.translated = source["translated"];
@@ -321,9 +323,12 @@ export namespace domain {
 	    }
 	}
 	export class PatchEntry {
+	    store: string;
+	    storeCode: string;
 	    title: string;
-	    rjCode: string;
 	    slug: string;
+	    thumbnailId: string;
+	    thumbnailFileName: string;
 	    storeLink: string;
 	    releaseDate: string;
 	    patch?: PatchDownload;
@@ -334,9 +339,12 @@ export namespace domain {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.store = source["store"];
+	        this.storeCode = source["storeCode"];
 	        this.title = source["title"];
-	        this.rjCode = source["rjCode"];
 	        this.slug = source["slug"];
+	        this.thumbnailId = source["thumbnailId"];
+	        this.thumbnailFileName = source["thumbnailFileName"];
 	        this.storeLink = source["storeLink"];
 	        this.releaseDate = source["releaseDate"];
 	        this.patch = this.convertValues(source["patch"], PatchDownload);

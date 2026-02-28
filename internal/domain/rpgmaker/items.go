@@ -7,7 +7,7 @@ import (
 
 // ItemDamage represents damage calculation for an item
 type ItemDamage struct {
-	Critical  bool                       `json:"critical"`
+	Critical  any                        `json:"critical"`
 	ElementId int                        `json:"elementId"`
 	Formula   any                        `json:"formula"`
 	Type      int                        `json:"type"`
@@ -58,7 +58,7 @@ func (i ItemEffect) MarshalJSON() ([]byte, error) {
 type Item struct {
 	ID          int                        `json:"id"`
 	AnimationId int                        `json:"animationId"`
-	Consumable  bool                       `json:"consumable"`
+	Consumable  any                        `json:"consumable"`
 	Damage      ItemDamage                 `json:"damage"`
 	Description string                     `json:"description"`
 	Effects     []ItemEffect               `json:"effects"`

@@ -100,9 +100,9 @@
             <div class="bg-zinc-800 border border-zinc-700 px-4 py-3">
               <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-2">
-                  <span class="text-xs text-zinc-500 w-20">RJ Code:</span>
+                  <span class="text-xs text-zinc-500 w-20">Store Code:</span>
                   <span class="text-sm text-zinc-300 font-mono"
-                    >{game.rjCode || "N/A"}</span
+                    >{game.storeCode || game.rjCode || "N/A"}</span
                   >
                 </div>
                 <div class="flex items-center gap-2">

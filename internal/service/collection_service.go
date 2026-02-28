@@ -62,8 +62,14 @@ func (s *CollectionService) PrepareGameToAddToCollection(ctx context.Context) (*
 }
 
 // AddGameToCollection adds a game to the user's collection
-func (s *CollectionService) AddGameToCollection(locatedGame *domain.LocatedGame, rjCode string, friendlyName string, tags []string) error {
-	locatedGame.RJCode = rjCode
+func (s *CollectionService) AddGameToCollection(locatedGame *domain.LocatedGame, storeCode string, friendlyName string, tags []string) error {
+	for _, game := range s.data.LocatedGames {
+		if game.GameDir == locatedGame.GameDir {
+			return errors.New("this game is already in your collection")
+		}
+	}
+	locatedGame.StoreCode = storeCode
+	locatedGame.RJCode = storeCode // backwards compatibility
 	locatedGame.FriendlyName = friendlyName
 	locatedGame.Tags = tags
 	locatedGame.Id = uuid.NewString()

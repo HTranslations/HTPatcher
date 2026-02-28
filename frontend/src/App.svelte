@@ -42,7 +42,7 @@
   import RestoreBackupDrawer from "./components/RestoreBackupDrawer.svelte";
   import EditGameDrawer from "./components/EditGameDrawer.svelte";
   import UpdateDialog from "./components/UpdateDialog.svelte";
-  import { getDlsiteImageUrl } from "./lib/utils.js";
+  import { getImageUrlFromCode } from "./lib/utils.js";
 
   let games: domain.LocatedGame[] = [];
   let patches: domain.PatchEntry[] = [];
@@ -98,6 +98,10 @@
   // Update success toast state
   let showUpdateSuccessToast = false;
   let updatedToVersion = 0;
+
+  // Error toast state
+  let showErrorToast = false;
+  let errorToastMessage = "";
 
   // Settings
   let gamesPerRow = 3;
@@ -236,11 +240,11 @@
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((g) => {
         const friendlyNameMatch = g.friendlyName?.toLowerCase().includes(query);
-        const rjCodeMatch = g.rjCode?.toLowerCase().includes(query);
+        const codeMatch = (g.storeCode || g.rjCode)?.toLowerCase().includes(query);
         const tagsMatch = g.tags?.some((tag) =>
           tag.toLowerCase().includes(query),
         );
-        return friendlyNameMatch || rjCodeMatch || tagsMatch;
+        return friendlyNameMatch || codeMatch || tagsMatch;
       });
     }
 
@@ -253,7 +257,7 @@
   })();
 
   $: {
-    const newUrl = rjCode ? getDlsiteImageUrl(rjCode) : "";
+    const newUrl = rjCode ? getImageUrlFromCode(rjCode) : "";
     if (newUrl !== previewImageUrl) {
       previewImageLoaded = false;
     }
@@ -282,10 +286,11 @@
         // Show translate drawer
         translateGameInfo = gameInfo;
         currentTranslatingGame = game;
-        // Try to find a matching patch by RJ code
+        // Try to find a matching patch by store code
+        const gameCode = (game.storeCode || game.rjCode || "").toLowerCase();
         selectedPatch =
           patches.find(
-            (patch) => patch.rjCode && game.rjCode && patch.rjCode.toLowerCase() === game.rjCode.toLowerCase(),
+            (patch) => patch.storeCode && gameCode && patch.storeCode.toLowerCase() === gameCode,
           ) || null;
         translateLogs = [];
         translatePatchInfo = null;
@@ -444,18 +449,7 @@
 
   function handleRjCodeInput(event: Event) {
     const target = event.target as HTMLInputElement;
-    let value = target.value.toUpperCase();
-    // Remove any non-alphanumeric characters except RJ prefix
-    value = value.replace(/[^RJ0-9]/g, "");
-    // Ensure it starts with RJ
-    if (value && !value.startsWith("RJ")) {
-      value = "RJ" + value.replace(/RJ/g, "");
-    }
-    // Limit to reasonable length (RJ + 8 digits max)
-    if (value.length > 10) {
-      value = value.substring(0, 10);
-    }
-    rjCode = value;
+    rjCode = target.value;
   }
 
   function handleFriendlyNameInput(event: Event) {
@@ -469,7 +463,7 @@
   }
 
   async function addGameToCollection() {
-    if (!locatedGame || !rjCode || !friendlyName) return;
+    if (!locatedGame || !friendlyName) return;
 
     try {
       // Parse tags from comma-separated string
@@ -481,8 +475,10 @@
       await AddGameToCollection(locatedGame, rjCode, friendlyName, tagArray);
       await loadGames();
       closeAddDialog();
-    } catch (error) {
-      console.error("Failed to add game to collection:", error);
+    } catch (error: any) {
+      errorToastMessage = error || "Failed to add game to collection";
+      showErrorToast = true;
+      setTimeout(() => (showErrorToast = false), 4000);
     }
   }
 
@@ -553,7 +549,7 @@
     if (!game.gameDir) return;
 
     try {
-      await ExportPatchedFiles(game.gameDir, game.friendlyName || game.rjCode || "game");
+      await ExportPatchedFiles(game.gameDir, game.friendlyName || game.storeCode || game.rjCode || "game");
     } catch (error) {
       console.error("Failed to export patched files:", error);
     }
@@ -663,7 +659,7 @@
   <TranslateGameDrawer
     show={showTranslateDrawer}
     gameInfo={translateGameInfo}
-    gameRjCode={currentTranslatingGame?.rjCode || ""}
+    gameRjCode={currentTranslatingGame?.storeCode || currentTranslatingGame?.rjCode || ""}
     {patches}
     logs={translateLogs}
     {isPatching}
@@ -705,6 +701,22 @@
     releaseInfo={updateReleaseInfo}
     onClose={closeUpdateDialog}
   />
+
+  <!-- Error Toast -->
+  {#if showErrorToast}
+    <div class="fixed bottom-4 right-4 z-50 bg-red-600 border border-red-500 text-white px-4 py-3 shadow-lg flex items-center gap-3">
+      <span>{errorToastMessage}</span>
+      <button
+        onclick={() => (showErrorToast = false)}
+        class="text-white/80 hover:text-white cursor-pointer"
+        aria-label="Close notification"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+  {/if}
 
   <!-- Update Success Toast -->
   {#if showUpdateSuccessToast}

@@ -17,6 +17,7 @@ type LocatedGame struct {
 	GameDir      string   `json:"gameDir"`
 	ExePath      string   `json:"exePath"`
 	RJCode       string   `json:"rjCode"`
+	StoreCode    string   `json:"storeCode"`
 	FriendlyName string   `json:"friendlyName"`
 	Tags         []string `json:"tags"`
 	Translated   bool     `json:"translated"`
@@ -32,12 +33,15 @@ type PersistentData struct {
 
 // PatchEntry represents a patch available for download
 type PatchEntry struct {
-	Title       string          `json:"title"`
-	RJCode      string          `json:"rjCode"`
-	Slug        string          `json:"slug"`
-	StoreLink   string          `json:"storeLink"`
-	ReleaseDate string          `json:"releaseDate"`
-	Patch       *PatchDownload  `json:"patch"`
+	Store             string         `json:"store"`
+	StoreCode         string         `json:"storeCode"`
+	Title             string         `json:"title"`
+	Slug              string         `json:"slug"`
+	ThumbnailId       string         `json:"thumbnailId"`
+	ThumbnailFileName string         `json:"thumbnailFileName"`
+	StoreLink         string         `json:"storeLink"`
+	ReleaseDate       string         `json:"releaseDate"`
+	Patch             *PatchDownload `json:"patch"`
 }
 
 // PatchDownload represents the downloadable patch file

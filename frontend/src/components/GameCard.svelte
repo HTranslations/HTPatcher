@@ -1,6 +1,8 @@
 <script lang="ts">
   import { domain } from "../../wailsjs/go/models.js";
-  import { getDlsiteImageUrl } from "../lib/utils.js";
+  import { getImageUrlFromCode } from "../lib/utils.js";
+
+  $: imageUrl = getImageUrlFromCode(game.storeCode || game.rjCode);
 
   export let game: domain.LocatedGame;
   export let onOpenGame: (game: domain.LocatedGame) => void;
@@ -51,11 +53,19 @@
   on:mouseleave={() => (isHovered = false)}
 >
   <div class="relative">
-    <img
-      src={getDlsiteImageUrl(game.rjCode)}
-      alt={game.rjCode || "Game"}
-      class="w-full aspect-4/3 object-cover bg-zinc-800"
-    />
+    {#if imageUrl}
+      <img
+        src={imageUrl}
+        alt={game.storeCode || game.rjCode || "Game"}
+        class="w-full aspect-4/3 object-cover bg-zinc-800"
+      />
+    {:else}
+      <div class="w-full aspect-4/3 bg-zinc-800 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-zinc-600">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      </div>
+    {/if}
     <!-- Bookmark Button -->
     {#if game.pinned || isHovered}
       <button
@@ -109,10 +119,10 @@
   <div class="h-1.5 w-full {getStatusColor(game.playStatus)}"></div>
   <div class="p-4 text-left">
     <h3 class="font-medium text-sm mb-1 line-clamp-2">
-      {game.friendlyName || game.rjCode || "Unknown Game"}
+      {game.friendlyName || game.storeCode || game.rjCode || "Unknown Game"}
     </h3>
     <p class="text-xs text-zinc-500 mb-1 font-mono truncate">
-      {game.rjCode || "No RJ Code"}
+      {game.storeCode || game.rjCode || "No Code"}
     </p>
     {#if game.tags && game.tags.length > 0}
       <div class="flex flex-wrap gap-1 mb-2">

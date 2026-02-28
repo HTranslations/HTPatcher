@@ -145,8 +145,10 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			// Collect all consecutive 401 commands
 			for commandIndex < len(commands) && commands[commandIndex].Code == 401 {
 				dialogueCommands = append(dialogueCommands, commands[commandIndex])
-				if text, ok := commands[commandIndex].Parameters[0].(string); ok {
-					fullText += text
+				if len(commands[commandIndex].Parameters) > 0 {
+					if text, ok := commands[commandIndex].Parameters[0].(string); ok {
+						fullText += text
+					}
 				}
 				commandIndex++
 			}
@@ -169,8 +171,10 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			// Collect all consecutive 405 commands
 			for commandIndex < len(commands) && commands[commandIndex].Code == 405 {
 				scrollingCommands = append(scrollingCommands, commands[commandIndex])
-				if text, ok := commands[commandIndex].Parameters[0].(string); ok {
-					fullText += text
+				if len(commands[commandIndex].Parameters) > 0 {
+					if text, ok := commands[commandIndex].Parameters[0].(string); ok {
+						fullText += text
+					}
 				}
 				commandIndex++
 			}

@@ -223,8 +223,8 @@ func (a *App) PrepareGameToAddToCollection() (*domain.LocatedGame, error) {
 }
 
 // AddGameToCollection adds a game to the collection
-func (a *App) AddGameToCollection(locatedGame *domain.LocatedGame, rjCode string, friendlyName string, tags []string) error {
-	return a.collectionService.AddGameToCollection(locatedGame, rjCode, friendlyName, tags)
+func (a *App) AddGameToCollection(locatedGame *domain.LocatedGame, storeCode string, friendlyName string, tags []string) error {
+	return a.collectionService.AddGameToCollection(locatedGame, storeCode, friendlyName, tags)
 }
 
 // GetGamesCollection returns all games in the collection

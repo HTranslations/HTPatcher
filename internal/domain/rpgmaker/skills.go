@@ -7,7 +7,7 @@ import (
 
 // SkillDamage represents damage calculation for a skill
 type SkillDamage struct {
-	Critical  bool                       `json:"critical"`
+	Critical  any                        `json:"critical"`
 	ElementId int                        `json:"elementId"`
 	Formula   any                        `json:"formula"`
 	Type      int                        `json:"type"`

@@ -1,10 +1,8 @@
 <script lang="ts">
   import { domain } from "../../wailsjs/go/models.js";
-  import { getDlsiteImageUrl } from "../lib/utils.js";
-  
   export let show: boolean;
   export let locatedGame: domain.LocatedGame | null;
-  export let rjCode: string;
+  export let rjCode: string; // kept as rjCode for prop compatibility, used as storeCode
   export let friendlyName: string;
   export let tags: string;
   export let previewImageUrl: string;
@@ -88,19 +86,20 @@
             />
           </div>
 
-          <!-- RJ Code Input -->
+          <!-- Store Code Input -->
           <div>
             <label for="rj-code-input" class="block text-sm font-medium text-zinc-400 mb-2">
-              RJ Code <span class="text-red-400">*</span>
+              Store Code <span class="text-zinc-500">(optional)</span>
             </label>
             <input
               id="rj-code-input"
               type="text"
               value={rjCode}
               oninput={onRjCodeInput}
-              placeholder="RJ00000000"
+              placeholder="RJ00000000, d_123456, etc."
               class="w-full bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:border-zinc-600"
             />
+            <p class="text-xs text-zinc-500 mt-1">DLsite RJ code, DMM d_ code, or leave empty</p>
           </div>
 
           <!-- Tags Input -->
@@ -163,7 +162,7 @@
             </button>
             <button
               onclick={onAddGame}
-              disabled={!rjCode || rjCode.length < 3 || !friendlyName || friendlyName.trim().length === 0}
+              disabled={!friendlyName || friendlyName.trim().length === 0}
               class="px-4 py-2 text-sm bg-emerald-600 text-white disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed"
             >
               Add Game
