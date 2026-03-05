@@ -136,7 +136,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 		if command.Code == 401 {
 			wrapWidth := patchInfo.Config.WrapWidth
 			if last101CommandHasSpeakerThumbnail && patchInfo.Config.DynamicWrapWidth {
-				wrapWidth -= 15
+				wrapWidth -= 12
 			}
 
 			dialogueCommands := []*rpgmaker.EventCommand{}

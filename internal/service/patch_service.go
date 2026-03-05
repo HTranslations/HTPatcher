@@ -142,9 +142,46 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 	return s.applyMVMZPatch(ctx, gameInfo, patchInfo, injectMessageHide)
 }
 
+// logPatchSummary logs translation statistics and warnings after patching
+func (s *PatchService) logPatchSummary(stats *util.PatchStats, totalDictEntries int) {
+	if stats == nil {
+		return
+	}
+
+	totalDialogues := stats.Applied + stats.NotFound
+
+	var notFoundPct float64
+	if totalDialogues > 0 {
+		notFoundPct = float64(stats.NotFound) / float64(totalDialogues) * 100
+	}
+
+	// Structured summary section
+	s.logger.Info("─── Patch Summary ───")
+	s.logger.Info(fmt.Sprintf("Translations applied: %d/%d", len(stats.UsedKeys), totalDictEntries))
+	s.logger.Info(fmt.Sprintf("Dialogues without translation: %d/%d (%.1f%%)", stats.NotFound, totalDialogues, notFoundPct))
+
+	// Warnings for missing translations
+	if notFoundPct > 50 {
+		s.logger.Warn(fmt.Sprintf("%.0f%% of dialogues had no corresponding translation. Are you sure this patch is for this game?", notFoundPct))
+	} else if notFoundPct > 5 {
+		s.logger.Warn(fmt.Sprintf("%.0f%% of dialogues had no corresponding translation. The game version might differ from the patched version or the game was updated.", notFoundPct))
+	}
+
+	// Reassurance when everything looks good
+	if notFoundPct <= 5 {
+		s.logger.Info("Small mismatches are normal and usually not noticeable in the translation.")
+	}
+
+	s.logger.Info("─────────────────────")
+}
+
 // applyVXAcePatch applies a patch to a VX Ace game
 func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
 	s.logger.Info("Detected VX Ace game, using VX Ace patcher...")
+
+	// Start tracking patch statistics
+	util.StartTracking()
+	totalDictEntries := len(patchInfo.Dictionary)
 
 	// Patch game data files
 	patchedFiles, err := s.vxaEngine.PatchGame(ctx, gameInfo, patchInfo)
@@ -220,6 +257,10 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 		return err
 	}
 
+	// Log patch statistics
+	stats := util.StopTracking()
+	s.logPatchSummary(stats, totalDictEntries)
+
 	s.logger.Success("Patch applied successfully!")
 
 	// Clean up downloaded patch file if it's in temp directory
@@ -236,6 +277,10 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
 	// Track all patched files (relative paths from game directory)
 	var patchedFiles []string
+
+	// Start tracking patch statistics
+	util.StartTracking()
+	totalDictEntries := len(patchInfo.Dictionary)
 
 	// List json files in data folder
 	s.logger.Info("Scanning data folder for JSON files...")
@@ -394,6 +439,10 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 		s.logger.Error("Failed to write patch summary")
 		return err
 	}
+
+	// Log patch statistics
+	stats := util.StopTracking()
+	s.logPatchSummary(stats, totalDictEntries)
 
 	s.logger.Success("✓ Patch applied successfully!")
 

@@ -3,6 +3,7 @@ package util
 import (
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var placeholderRegex = regexp.MustCompile(`\\[A-Za-z]*(\[[^\]]*\])?`)
@@ -137,25 +138,113 @@ func GetTypedTranslationKey(entryType string, text string) string {
 	return entryType + ":" + normalized
 }
 
+// IsJapaneseChar checks if a single rune is a Japanese character
+func IsJapaneseChar(r rune) bool {
+	return unicode.In(r,
+		unicode.Hiragana,
+		unicode.Katakana,
+		unicode.Han,
+	) ||
+		(r >= 0x30A0 && r <= 0x30FF) ||
+		(r >= 0xFF65 && r <= 0xFF9F) ||
+		(r >= 0x3000 && r <= 0x303F)
+}
+
+// ContainsJapanese checks if a string contains Japanese characters
+func ContainsJapanese(s string) bool {
+	for _, r := range s {
+		if IsJapaneseChar(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsOnlyPunctuation checks if a string contains only punctuation, whitespace and symbols
+func IsOnlyPunctuation(s string) bool {
+	for _, r := range s {
+		if !unicode.IsPunct(r) && !unicode.IsSpace(r) && !unicode.IsSymbol(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// ShouldCountAsNotFound returns true if text is meaningful Japanese content
+// that should have had a translation (not just punctuation/symbols)
+func ShouldCountAsNotFound(s string) bool {
+	if s == "" {
+		return false
+	}
+	if IsOnlyPunctuation(s) {
+		return false
+	}
+	return ContainsJapanese(s)
+}
+
+// PatchStats tracks translation application statistics during patching.
+// Use StartTracking/StopTracking to enable stats collection via DictLookup.
+type PatchStats struct {
+	Applied  int                    // number of successful lookups
+	NotFound int                    // number of non-empty dialogue texts with no translation
+	UsedKeys map[string]struct{}    // unique dictionary keys that were matched
+}
+
+var activeStats *PatchStats
+
+// StartTracking begins collecting patch statistics. Returns the stats object
+// that will be populated during subsequent DictLookup calls.
+func StartTracking() *PatchStats {
+	activeStats = &PatchStats{
+		UsedKeys: make(map[string]struct{}),
+	}
+	return activeStats
+}
+
+// StopTracking stops collecting patch statistics and returns the final stats.
+func StopTracking() *PatchStats {
+	stats := activeStats
+	activeStats = nil
+	return stats
+}
+
 // DictLookup looks up a translation in the dictionary, using typed keys when keyMode is "typed",
 // falling back to legacy untyped keys for backward compatibility.
 func DictLookup(dictionary map[string]string, keyMode string, entryType string, text string) (string, bool) {
 	if keyMode == "typed" {
 		key := GetTypedTranslationKey(entryType, text)
 		if translation, ok := dictionary[key]; ok {
+			if activeStats != nil {
+				activeStats.Applied++
+				activeStats.UsedKeys[key] = struct{}{}
+			}
 			return translation, true
 		}
 		// Fallback to untyped key for backward compat within mixed patches
 		key = GetTranslationKey(text)
 		if translation, ok := dictionary[key]; ok {
+			if activeStats != nil {
+				activeStats.Applied++
+				activeStats.UsedKeys[key] = struct{}{}
+			}
 			return translation, true
+		}
+		if activeStats != nil && entryType == "dialogue" && ShouldCountAsNotFound(text) {
+			activeStats.NotFound++
 		}
 		return "", false
 	}
 	// Legacy mode: untyped keys
 	key := GetTranslationKey(text)
 	if translation, ok := dictionary[key]; ok {
+		if activeStats != nil {
+			activeStats.Applied++
+			activeStats.UsedKeys[key] = struct{}{}
+		}
 		return translation, true
+	}
+	if activeStats != nil && entryType == "dialogue" && ShouldCountAsNotFound(text) {
+		activeStats.NotFound++
 	}
 	return "", false
 }

@@ -571,7 +571,7 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 		if code == 401 {
 			wrapWidth := patchInfo.Config.WrapWidth
 			if last101HasThumbnail && patchInfo.Config.DynamicWrapWidth {
-				wrapWidth -= 15
+				wrapWidth -= 12
 			}
 
 			// Collect all consecutive 401 commands
