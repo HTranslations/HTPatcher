@@ -189,6 +189,9 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		if name, ok := util.DictLookup(dict, km, "event_name", event.Name); ok {
 			event.Name = name
 		}
+		if note, ok := util.DictLookup(dict, km, "event_note", event.Note); ok {
+			event.Note = note
+		}
 		for i := range event.Pages {
 			newCommands, err := patchCommands(event.Pages[i].List, patchInfo)
 			if err != nil {
