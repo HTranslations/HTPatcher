@@ -52,6 +52,24 @@ type PatchDownload struct {
 	Version  string `json:"version"`
 }
 
+// GamePatchInfo represents the response from GET /api/patches/{storeCode}
+type GamePatchInfo struct {
+	Store     string           `json:"store"`
+	StoreCode string          `json:"storeCode"`
+	Status    string           `json:"status"`
+	Title     string           `json:"title"`
+	Slug      string           `json:"slug"`
+	StoreLink string           `json:"storeLink"`
+	Patches   []GamePatchEntry `json:"patches"`
+}
+
+// GamePatchEntry represents a single patch version in the GamePatchInfo response
+type GamePatchEntry struct {
+	Version      string         `json:"version"`
+	ReleaseNotes []string       `json:"releaseNotes"`
+	Download     *PatchDownload `json:"download"`
+}
+
 // PatchSummary records which files were patched during the patch process
 type PatchSummary struct {
 	PatchedAt    string   `json:"patchedAt"`    // ISO timestamp

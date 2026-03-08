@@ -13,6 +13,7 @@
   export let onTranslateGame: (game: domain.LocatedGame) => void;
   export let onEditGame: (game: domain.LocatedGame) => void;
   export let onPinGame: (game: domain.LocatedGame) => void;
+  export let platform: string;
   export let onSearchQueryChange: (query: string) => void;
   export let onGamesPerRowChange: (count: number) => void;
 </script>
@@ -112,6 +113,7 @@
   {#each games as game}
     <GameCard
       {game}
+      {platform}
       onOpenGame={onTranslateGame}
       {onOpenFolder}
       {onLaunchGame}

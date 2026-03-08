@@ -211,7 +211,7 @@ func registerTools(s *server.MCPServer, svc *Services) {
 		}
 
 		// Apply patch
-		if err := svc.Patch.ApplyPatch(ctx, gameInfo, patchInfo, injectMessageHide); err != nil {
+		if err := svc.Patch.ApplyPatch(ctx, gameInfo, patchInfo, injectMessageHide, false, "", ""); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("patch failed: %v", err)), nil
 		}
 
@@ -275,7 +275,7 @@ func registerTools(s *server.MCPServer, svc *Services) {
 		}
 
 		// Apply patch
-		if err := svc.Patch.ApplyPatch(ctx, gameInfo, patchInfo, injectMessageHide); err != nil {
+		if err := svc.Patch.ApplyPatch(ctx, gameInfo, patchInfo, injectMessageHide, false, "", ""); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("patch failed: %v", err)), nil
 		}
 

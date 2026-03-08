@@ -129,8 +129,32 @@ func (s *PatchService) FetchAllPatches() ([]domain.PatchEntry, error) {
 	return patches, nil
 }
 
+// FetchGamePatchInfo fetches patch info for a specific game by store code
+func (s *PatchService) FetchGamePatchInfo(storeCode string) (*domain.GamePatchInfo, error) {
+	response, err := http.Get("https://htranslations.com/api/patches/" + storeCode)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == 404 {
+		return nil, nil
+	}
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var info domain.GamePatchInfo
+	if err := json.Unmarshal(body, &info); err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
 // ApplyPatch applies a patch to a game
-func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
+func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool, injectPatchChecker bool, storeCode string, patchVersion string) error {
 	s.logger.Info("Starting patch application...")
 
 	// Route to VX Ace patcher if needed
@@ -139,7 +163,7 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 	}
 
 	// MV/MZ patching logic
-	return s.applyMVMZPatch(ctx, gameInfo, patchInfo, injectMessageHide)
+	return s.applyMVMZPatch(ctx, gameInfo, patchInfo, injectMessageHide, injectPatchChecker, storeCode, patchVersion)
 }
 
 // logPatchSummary logs translation statistics and warnings after patching
@@ -274,7 +298,7 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 }
 
 // applyMVMZPatch applies a patch to a MV/MZ game
-func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
+func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool, injectPatchChecker bool, storeCode string, patchVersion string) error {
 	// Track all patched files (relative paths from game directory)
 	var patchedFiles []string
 
@@ -372,6 +396,16 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 		injectedFiles, err := s.pluginPatcher.InjectMessageWindowHidden(ctx, gameInfo)
 		if err != nil {
 			s.logger.Warn(fmt.Sprintf("Failed to inject MessageWindowHidden: %v", err))
+		} else {
+			patchedFiles = append(patchedFiles, injectedFiles...)
+		}
+	}
+
+	// Inject HT_PatchChecker plugin if requested
+	if injectPatchChecker && storeCode != "" && patchVersion != "" {
+		injectedFiles, err := s.pluginPatcher.InjectPatchChecker(ctx, gameInfo, storeCode, patchVersion)
+		if err != nil {
+			s.logger.Warn(fmt.Sprintf("Failed to inject HT_PatchChecker: %v", err))
 		} else {
 			patchedFiles = append(patchedFiles, injectedFiles...)
 		}

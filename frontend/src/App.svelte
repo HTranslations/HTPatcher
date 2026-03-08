@@ -9,6 +9,7 @@
     LaunchGameFromPath,
     OpenFolder,
     FetchAllPatches,
+    FetchGamePatchInfo,
     RemoveGameFromCollection,
     SelectGameExeFile,
     GetGameInfoFromExePath,
@@ -27,6 +28,7 @@
     CheckForUpdate,
     GetCurrentVersion,
     ExportPatchedFiles,
+    GetPlatform,
   } from "../wailsjs/go/main/App.js";
   import { EventsOn } from "../wailsjs/runtime/runtime.js";
 
@@ -73,9 +75,11 @@
   let isPatching = false;
   let launchAfterPatch = true;
   let injectMessageHide = false;
+  let injectPatchChecker = true;
   let selectedPatch: domain.PatchEntry | null = null;
   let patchSearchQuery = "";
   let currentTranslatingGame: domain.LocatedGame | null = null;
+  let gamePatchInfo: domain.GamePatchInfo | null = null;
 
   // Restore backup drawer state
   let showRestoreDrawer = false;
@@ -103,6 +107,9 @@
   let showErrorToast = false;
   let errorToastMessage = "";
 
+  // Platform
+  let platform = "windows";
+
   // Settings
   let gamesPerRow = 3;
 
@@ -127,6 +134,13 @@
   onMount(async () => {
     loadGames();
     loadPatches();
+
+    // Get platform
+    try {
+      platform = await GetPlatform();
+    } catch (error) {
+      console.error("Failed to get platform:", error);
+    }
 
     // Load data path
     try {
@@ -286,12 +300,24 @@
         // Show translate drawer
         translateGameInfo = gameInfo;
         currentTranslatingGame = game;
-        // Try to find a matching patch by store code
         const gameCode = (game.storeCode || game.rjCode || "").toLowerCase();
-        selectedPatch =
-          patches.find(
-            (patch) => patch.storeCode && gameCode && patch.storeCode.toLowerCase() === gameCode,
-          ) || null;
+        // Fetch game-specific patch info
+        gamePatchInfo = null;
+        selectedPatch = null;
+        if (gameCode) {
+          try {
+            gamePatchInfo = await FetchGamePatchInfo(gameCode);
+          } catch (e) {
+            console.error("Failed to fetch game patch info:", e);
+          }
+        }
+        // Also try to find a matching patch from the all-patches list as fallback
+        if (!gamePatchInfo) {
+          selectedPatch =
+            patches.find(
+              (patch) => patch.storeCode && gameCode && patch.storeCode.toLowerCase() === gameCode,
+            ) || null;
+        }
         translateLogs = [];
         translatePatchInfo = null;
         patchSearchQuery = "";
@@ -310,6 +336,7 @@
     translateLogs = [];
     patchSearchQuery = "";
     currentTranslatingGame = null;
+    gamePatchInfo = null;
   }
 
   function closeRestoreDrawer() {
@@ -323,6 +350,7 @@
     try {
       translatePatchInfo = await SelectPatchFile();
       selectedPatch = null;
+      gamePatchInfo = null;
     } catch (error) {
       console.error("Failed to select patch file:", error);
     }
@@ -334,6 +362,7 @@
     } else {
       selectedPatch = patch;
       translatePatchInfo = null;
+      gamePatchInfo = null;
     }
   }
 
@@ -342,23 +371,36 @@
   }
 
   async function applyPatch() {
-    if (!translateGameInfo || !(translatePatchInfo || selectedPatch)) return;
+    if (!translateGameInfo || !(translatePatchInfo || selectedPatch || gamePatchInfo)) return;
 
     translateLogs = [];
     isPatching = true;
 
     try {
-      if (selectedPatch) {
+      // Download from game-specific patch info if available
+      if (!translatePatchInfo && gamePatchInfo && gamePatchInfo.patches.length > 0) {
+        const latestPatch = gamePatchInfo.patches[0];
+        if (latestPatch.download) {
+          translatePatchInfo = await DownloadPatch(latestPatch.download.url, latestPatch.download.fileName);
+        }
+      }
+      // Fallback: download from selected patch in the all-patches list
+      if (!translatePatchInfo && selectedPatch) {
         translatePatchInfo = await DownloadPatch(selectedPatch.patch.url, selectedPatch.patch.fileName);
       }
 
       if (translatePatchInfo && currentTranslatingGame) {
+        const storeCode = gamePatchInfo?.storeCode || selectedPatch?.storeCode || currentTranslatingGame.storeCode || currentTranslatingGame.rjCode || "";
+        const patchVersion = gamePatchInfo?.patches?.[0]?.version || "";
         await ApplyPatch(
           translateGameInfo,
           translatePatchInfo,
           launchAfterPatch,
           true,
           injectMessageHide,
+          injectPatchChecker,
+          storeCode,
+          patchVersion,
         );
         await SetGameTranslated(currentTranslatingGame.id, true);
         await loadGames();
@@ -598,6 +640,7 @@
             games={filteredGames}
             {searchQuery}
             {gamesPerRow}
+            {platform}
             onAddGame={addGame}
             onOpenFolder={openGameFolder}
             onLaunchGame={launchGame}
@@ -661,10 +704,13 @@
     gameInfo={translateGameInfo}
     gameRjCode={currentTranslatingGame?.storeCode || currentTranslatingGame?.rjCode || ""}
     {patches}
+    {gamePatchInfo}
+    {platform}
     logs={translateLogs}
     {isPatching}
     bind:launchAfterPatch
     bind:injectMessageHide
+    bind:injectPatchChecker
     {selectedPatch}
     patchInfo={translatePatchInfo}
     bind:patchSearchQuery
@@ -675,6 +721,7 @@
     onApplyPatch={applyPatch}
     onLaunchAfterPatchChange={(value) => (launchAfterPatch = value)}
     onInjectMessageHideChange={(value) => (injectMessageHide = value)}
+    onInjectPatchCheckerChange={(value) => (injectPatchChecker = value)}
     onPatchSearchQueryChange={(value) => (patchSearchQuery = value)}
   />
 

@@ -5,21 +5,26 @@
   export let gameInfo: domain.GameInfo | null;
   export let gameRjCode: string;
   export let patches: domain.PatchEntry[];
+  export let gamePatchInfo: domain.GamePatchInfo | null;
   export let logs: Array<{ message: string; type: "info" | "success" | "error" | "warning" }>;
   export let isPatching: boolean;
   export let launchAfterPatch: boolean;
   export let selectedPatch: domain.PatchEntry | null;
   export let patchInfo: domain.PatchInfo | null;
   export let patchSearchQuery: string;
-  
+
+  export let platform: string;
+
   export let onClose: () => void;
   export let onSelectPatchFile: () => void;
   export let onTogglePatch: (patch: domain.PatchEntry) => void;
   export let onClearCustomPatch: () => void;
   export let onApplyPatch: () => void;
   export let injectMessageHide: boolean;
+  export let injectPatchChecker: boolean;
   export let onLaunchAfterPatchChange: (value: boolean) => void;
   export let onInjectMessageHideChange: (value: boolean) => void;
+  export let onInjectPatchCheckerChange: (value: boolean) => void;
   export let onPatchSearchQueryChange: (value: string) => void;
   
   let logContainer: HTMLDivElement;
@@ -29,10 +34,13 @@
   $: filteredPatches = (() => {
     const query = patchSearchQuery.toLowerCase();
     const rjLower = gameRjCode?.toLowerCase() || "";
+    const gamePatchCode = gamePatchInfo?.storeCode?.toLowerCase() || "";
     return patches.filter(
       (patch) =>
-        patch.title.toLowerCase().includes(query) ||
-        patch.storeCode?.toLowerCase().includes(query)
+        (patch.title.toLowerCase().includes(query) ||
+        patch.storeCode?.toLowerCase().includes(query)) &&
+        // Exclude the game-specific patch since it's already shown at the top
+        !(gamePatchCode && patch.storeCode?.toLowerCase() === gamePatchCode)
     )
     .sort((a, b) => {
       const aMatch = rjLower && a.storeCode?.toLowerCase() === rjLower;
@@ -129,13 +137,13 @@
                 Patch File
               </span>
               <div class="flex items-center gap-2">
-                {#if patchInfo}
+                {#if patchInfo || gamePatchInfo || selectedPatch}
                   <span class="text-xs text-emerald-400">✓ Selected</span>
                 {/if}
               </div>
             </div>
             
-            {#if patchInfo && !selectedPatch}
+            {#if patchInfo && !selectedPatch && !gamePatchInfo}
               <!-- Custom File Selected -->
               <div class="bg-zinc-800 border border-zinc-700 px-4 py-3 flex items-center justify-between">
                 <p class="text-sm text-zinc-300 font-mono truncate flex-1">
@@ -157,7 +165,7 @@
               <div class="text-sm text-zinc-500 text-left">
                 Search for patches or select a .htpatch file manually.
               </div>
-              
+
               <!-- Autocomplete Input -->
               <div class="flex items-center gap-2">
                 <input
@@ -181,6 +189,17 @@
 
               <!-- Autocomplete Dropdown -->
               <div class="bg-zinc-800 border border-zinc-700 max-h-34 overflow-y-auto shadow-lg">
+                {#if gamePatchInfo && gamePatchInfo.patches.length > 0}
+                  <div
+                    class="w-full text-left px-4 py-2 text-sm text-zinc-300 border-b border-zinc-700 bg-zinc-700 border-l-2 border-l-emerald-500 {filteredPatches.length === 0 ? 'last:border-b-0' : ''}"
+                  >
+                    <span class="absolute top-1/2 -translate-y-1/2 right-4 bg-emerald-500 text-white text-xs font-bold px-1.5 py-0.5">✓</span>
+                    <div class="flex-1 pr-8">
+                      <div class="font-medium">{gamePatchInfo.title}</div>
+                      <div class="text-xs text-zinc-500 mt-1">v{gamePatchInfo.patches[0].version} — {gamePatchInfo.storeCode}</div>
+                    </div>
+                  </div>
+                {/if}
                 {#if filteredPatches.length > 0}
                   {#each filteredPatches as patch}
                     <button
@@ -199,7 +218,7 @@
                       </div>
                     </button>
                   {/each}
-                {:else}
+                {:else if !gamePatchInfo}
                   <div class="px-4 py-2 text-sm text-zinc-500">
                     No patches found
                   </div>
@@ -226,15 +245,19 @@
 
         <!-- Footer Action - Stuck to bottom -->
         <div class="border-t border-zinc-800 p-6 flex flex-col gap-3 flex-shrink-0">
-          <label class="flex items-center gap-2 cursor-pointer">
+          <label class="flex items-center gap-2 {platform !== 'windows' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}">
             <input
               type="checkbox"
-              checked={launchAfterPatch}
+              checked={platform === "windows" && launchAfterPatch}
+              disabled={platform !== "windows"}
               onchange={(e) => onLaunchAfterPatchChange((e.target as HTMLInputElement).checked)}
               class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
             />
             <span class="text-sm text-zinc-400">
               Launch game after patching
+              {#if platform !== "windows"}
+                <span class="text-xs text-zinc-600">(Windows only)</span>
+              {/if}
             </span>
           </label>
           {#if gameInfo && gameInfo.gameVersion !== "vxace"}
@@ -249,13 +272,29 @@
                 Inject plugin to hide message boxes on right click
               </span>
             </label>
+            <label class="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={injectPatchChecker}
+                onchange={(e) => onInjectPatchCheckerChange((e.target as HTMLInputElement).checked)}
+                class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0 mt-0.5"
+              />
+              <div class="flex flex-col">
+                <span class="text-sm text-zinc-400">
+                  Add HTranslations plugin to the game (super recommended!)
+                </span>
+                <span class="text-xs text-zinc-600">
+                  Notifies you in-game when a new translation patch update is available
+                </span>
+              </div>
+            </label>
           {/if}
           <button
             onclick={onApplyPatch}
-            disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch) || patchSuccess}
+            disabled={isPatching || !gameInfo || !(patchInfo || selectedPatch || (gamePatchInfo && gamePatchInfo.patches.length > 0)) || patchSuccess}
             class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-700 disabled:cursor-not-allowed px-4 py-3 text-sm font-semibold uppercase tracking-wide transition-colors"
           >
-            {patchSuccess ? "Patch Applied Successfully" : isPatching ? "Applying Patch..." : gameInfo && (patchInfo || selectedPatch) ? "Apply Patch" : "Select Patch File"}
+            {patchSuccess ? "Patch Applied Successfully" : isPatching ? "Applying Patch..." : gameInfo && (patchInfo || selectedPatch || gamePatchInfo) ? "Apply Patch" : "Select Patch File"}
           </button>
         </div>
       </div>

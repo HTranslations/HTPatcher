@@ -21,6 +21,9 @@ var messageWindowHiddenMVJS []byte
 //go:embed embedded/MessageWindowHidden_MZ.js
 var messageWindowHiddenMZJS []byte
 
+//go:embed embedded/HT_PatchChecker.js
+var htPatchCheckerJS []byte
+
 // PluginPatcher handles plugin patching operations
 type PluginPatcher struct {
 	logger Logger
@@ -191,6 +194,73 @@ func (p *PluginPatcher) InjectMessageWindowHidden(ctx context.Context, gameInfo 
 	patchedFiles = append(patchedFiles, relPath)
 
 	p.logger.Info("Injected MessageWindowHidden plugin")
+	return patchedFiles, nil
+}
+
+// InjectPatchChecker injects the HT_PatchChecker plugin into the game
+func (p *PluginPatcher) InjectPatchChecker(ctx context.Context, gameInfo *domain.GameInfo, storeCode string, patchVersion string) ([]string, error) {
+	var patchedFiles []string
+
+	pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
+	data, err := os.ReadFile(pluginsJsPath)
+	if err != nil {
+		return nil, err
+	}
+
+	jsContent := string(data)
+	startIndex := strings.Index(jsContent, "[")
+	endIndex := strings.LastIndex(jsContent, "]")
+	if startIndex == -1 || endIndex == -1 {
+		return nil, fmt.Errorf("could not parse plugins.js")
+	}
+
+	pluginsJson := jsContent[startIndex : endIndex+1]
+	var plugins []domain.PluginData
+	if err := json.Unmarshal([]byte(pluginsJson), &plugins); err != nil {
+		return nil, err
+	}
+
+	// Check if already exists
+	for _, plugin := range plugins {
+		if plugin.Name == "HT_PatchChecker" {
+			p.logger.Info("HT_PatchChecker plugin already present, skipping injection")
+			return nil, nil
+		}
+	}
+
+	params := fmt.Sprintf(`{"storeCode":"%s","currentVersion":"%s","apiBase":"https://htranslations.com"}`, storeCode, patchVersion)
+
+	plugins = append(plugins, domain.PluginData{
+		Name:        "HT_PatchChecker",
+		Description: "Checks for translation patch updates on startup",
+		Status:      true,
+		Parameters:  json.RawMessage(params),
+	})
+
+	patchedPluginsJson, err := json.Marshal(plugins)
+	if err != nil {
+		return nil, err
+	}
+
+	before := jsContent[:startIndex]
+	after := jsContent[endIndex+1:]
+	patchedData := before + string(patchedPluginsJson) + after
+
+	if err := os.WriteFile(pluginsJsPath, []byte(patchedData), 0644); err != nil {
+		return nil, err
+	}
+	relPath, _ := filepath.Rel(gameInfo.GameDir, pluginsJsPath)
+	patchedFiles = append(patchedFiles, relPath)
+
+	// Copy the JS file to the plugins directory
+	destPath := filepath.Join(gameInfo.JsPath, "plugins", "HT_PatchChecker.js")
+	if err := os.WriteFile(destPath, htPatchCheckerJS, 0644); err != nil {
+		return nil, err
+	}
+	relPath, _ = filepath.Rel(gameInfo.GameDir, destPath)
+	patchedFiles = append(patchedFiles, relPath)
+
+	p.logger.Info("Injected HT_PatchChecker plugin")
 	return patchedFiles, nil
 }
 

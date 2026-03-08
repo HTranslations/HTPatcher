@@ -7,9 +7,18 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    runs-on: windows-latest
-    
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows/amd64
+            artifact: htpatcher.exe
+          - os: ubuntu-latest
+            platform: linux/amd64
+            artifact: htpatcher
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,46 +36,81 @@ jobs:
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
       - name: Extract version from version.go
         id: version
-        shell: pwsh
+        shell: bash
         run: |
-          $content = Get-Content -Path "internal/service/version.go" -Raw
-          if ($content -match 'const Version = (\d+)') {
-            $version = $matches[1]
-            echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-            echo "TAG=v$version" >> $env:GITHUB_OUTPUT
-            echo "Extracted version: $version"
-          } else {
-            echo "Failed to extract version"
-            exit 1
-          }
+          VERSION=$(grep -oP 'const Version = \K\d+' internal/service/version.go)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
 
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: bun install
 
       - name: Build application
-        run: wails build -clean -platform windows/amd64
+        run: wails build -clean -platform ${{ matrix.platform }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: build/bin/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from version.go
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep -oP 'const Version = \K\d+' internal/service/version.go)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: htpatcher.exe
+          path: artifacts/
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: htpatcher
+          path: artifacts/
 
       - name: Create Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.TAG }}
           name: HTranslations Patcher v${{ steps.version.outputs.VERSION }}
           body: |
             ## HTranslations Patcher v${{ steps.version.outputs.VERSION }}
-            
+
             ### Installation
-            1. Download `htpatcher.exe`
-            2. Run the executable
-            
+            **Windows:** Download `htpatcher.exe` and run it.
+            **Linux:** Download `htpatcher`, make it executable (`chmod +x htpatcher`), and run it.
+
             ### Changes
             - Release version ${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
-          files: build/bin/htpatcher.exe
+          files: |
+            artifacts/htpatcher.exe
+            artifacts/htpatcher
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

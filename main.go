@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -75,27 +76,37 @@ func performSelfUpdate(targetPath string) error {
 		return fmt.Errorf("failed to get current executable path: %w", err)
 	}
 
-	// Wait for original process to exit by polling file lock
-	// Try to open target file for writing to check if it's released
-	maxRetries := 30 // 30 seconds max
-	for i := 0; i < maxRetries; i++ {
-		time.Sleep(1 * time.Second)
+	if runtime.GOOS == "windows" {
+		// Wait for original process to exit by polling file lock
+		// Try to open target file for writing to check if it's released
+		maxRetries := 30 // 30 seconds max
+		for i := 0; i < maxRetries; i++ {
+			time.Sleep(1 * time.Second)
 
-		// Try to open target for writing
-		f, err := os.OpenFile(targetPath, os.O_WRONLY, 0)
-		if err == nil {
-			f.Close()
-			break // File is no longer locked
-		}
+			// Try to open target for writing
+			f, err := os.OpenFile(targetPath, os.O_WRONLY, 0)
+			if err == nil {
+				f.Close()
+				break // File is no longer locked
+			}
 
-		if i == maxRetries-1 {
-			return fmt.Errorf("timeout waiting for process to exit")
+			if i == maxRetries-1 {
+				return fmt.Errorf("timeout waiting for process to exit")
+			}
 		}
 	}
+	// On Linux/Darwin, files aren't locked while running — proceed immediately.
 
 	// Copy ourselves to target location (overwrite)
 	if err := copyFile(currentExePath, targetPath); err != nil {
 		return fmt.Errorf("failed to replace executable: %w", err)
+	}
+
+	// Make executable on non-Windows platforms
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(targetPath, 0755); err != nil {
+			return fmt.Errorf("failed to make updated binary executable: %w", err)
+		}
 	}
 
 	// Launch the updated version with --updated flag

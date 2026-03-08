@@ -3,6 +3,7 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // GetUpdateCacheDir returns the update cache directory path
@@ -30,7 +31,12 @@ func GetUpdateExePath() (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(cacheDir, "htpatcher_update.exe"), nil
+	filename := "htpatcher_update"
+	if runtime.GOOS == "windows" {
+		filename = "htpatcher_update.exe"
+	}
+
+	return filepath.Join(cacheDir, filename), nil
 }
 
 // CleanUpdateCache deletes all files in the update cache directory

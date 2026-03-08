@@ -6,8 +6,8 @@ export function AddGameToCollection(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['AddGameToCollection'](arg1, arg2, arg3, arg4);
 }
 
-export function ApplyPatch(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['ApplyPatch'](arg1, arg2, arg3, arg4, arg5);
+export function ApplyPatch(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['ApplyPatch'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 export function ApplyUpdate() {
@@ -38,6 +38,10 @@ export function FetchAllPatches() {
   return window['go']['main']['App']['FetchAllPatches']();
 }
 
+export function FetchGamePatchInfo(arg1) {
+  return window['go']['main']['App']['FetchGamePatchInfo'](arg1);
+}
+
 export function GetCurrentVersion() {
   return window['go']['main']['App']['GetCurrentVersion']();
 }
@@ -60,6 +64,10 @@ export function GetLatestReleaseInfo() {
 
 export function GetPersistentDataPath() {
   return window['go']['main']['App']['GetPersistentDataPath']();
+}
+
+export function GetPlatform() {
+  return window['go']['main']['App']['GetPlatform']();
 }
 
 export function LaunchGameFromPath(arg1) {

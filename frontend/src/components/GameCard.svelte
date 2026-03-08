@@ -5,6 +5,7 @@
   $: imageUrl = getImageUrlFromCode(game.storeCode || game.rjCode);
 
   export let game: domain.LocatedGame;
+  export let platform: string;
   export let onOpenGame: (game: domain.LocatedGame) => void;
   export let onOpenFolder: (game: domain.LocatedGame) => void;
   export let onLaunchGame: (game: domain.LocatedGame) => void;
@@ -217,9 +218,9 @@
         </button>
         <button
           on:click={handleLaunchGame}
-          disabled={loadingPlay}
-          class="bg-blue-600 border border-blue-600 text-white px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
-          title="Launch game"
+          disabled={loadingPlay || platform !== "windows"}
+          class="bg-blue-600 border border-blue-600 text-white px-3 py-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          title={platform !== "windows" ? "Game launching is only supported on Windows" : "Launch game"}
         >
           {#if loadingPlay}
             <svg

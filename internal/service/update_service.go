@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -63,10 +64,10 @@ func (s *UpdateService) GetCurrentVersion() int {
 
 // DownloadUpdate downloads the update executable to cache
 func (s *UpdateService) DownloadUpdate(releaseInfo *domain.ReleaseInfo) error {
-	// Find .exe asset
-	asset := s.findExeAsset(releaseInfo.Assets)
+	// Find platform-appropriate asset
+	asset := s.findPlatformAsset(releaseInfo.Assets)
 	if asset == nil {
-		return fmt.Errorf("no executable found in release assets")
+		return fmt.Errorf("no executable found in release assets for %s", runtime.GOOS)
 	}
 
 	// Get cache path
@@ -129,22 +130,39 @@ func (s *UpdateService) DownloadUpdate(releaseInfo *domain.ReleaseInfo) error {
 	// Emit final progress
 	s.logger.Info(fmt.Sprintf("UPDATE_PROGRESS:%d:%d:100.0", totalSize, totalSize))
 	s.logger.Success("Download complete")
-	return nil
-}
 
-// findExeAsset finds the .exe asset in release assets
-func (s *UpdateService) findExeAsset(assets []domain.Asset) *domain.Asset {
-	// First, look for exact name match
-	for i := range assets {
-		if strings.ToLower(assets[i].Name) == "htpatcher.exe" {
-			return &assets[i]
+	// Make executable on non-Windows platforms
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(updateExePath, 0755); err != nil {
+			return fmt.Errorf("failed to make update executable: %w", err)
 		}
 	}
 
-	// Fallback: find any .exe file
-	for i := range assets {
-		if strings.HasSuffix(strings.ToLower(assets[i].Name), ".exe") {
-			return &assets[i]
+	return nil
+}
+
+// findPlatformAsset finds the appropriate asset for the current platform
+func (s *UpdateService) findPlatformAsset(assets []domain.Asset) *domain.Asset {
+	if runtime.GOOS == "windows" {
+		// Look for exact name match
+		for i := range assets {
+			if strings.ToLower(assets[i].Name) == "htpatcher.exe" {
+				return &assets[i]
+			}
+		}
+		// Fallback: find any .exe file
+		for i := range assets {
+			if strings.HasSuffix(strings.ToLower(assets[i].Name), ".exe") {
+				return &assets[i]
+			}
+		}
+	} else {
+		// Linux/Darwin: look for non-.exe htpatcher binary
+		for i := range assets {
+			name := strings.ToLower(assets[i].Name)
+			if name == "htpatcher" || name == "htpatcher-linux-amd64" {
+				return &assets[i]
+			}
 		}
 	}
 

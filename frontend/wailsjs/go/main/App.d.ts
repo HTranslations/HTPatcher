@@ -4,7 +4,7 @@ import {domain} from '../models';
 
 export function AddGameToCollection(arg1:domain.LocatedGame,arg2:string,arg3:string,arg4:Array<string>):Promise<void>;
 
-export function ApplyPatch(arg1:domain.GameInfo,arg2:domain.PatchInfo,arg3:boolean,arg4:boolean,arg5:boolean):Promise<void>;
+export function ApplyPatch(arg1:domain.GameInfo,arg2:domain.PatchInfo,arg3:boolean,arg4:boolean,arg5:boolean,arg6:boolean,arg7:string,arg8:string):Promise<void>;
 
 export function ApplyUpdate():Promise<void>;
 
@@ -20,6 +20,8 @@ export function ExportPatchedFiles(arg1:string,arg2:string):Promise<void>;
 
 export function FetchAllPatches():Promise<Array<domain.PatchEntry>>;
 
+export function FetchGamePatchInfo(arg1:string):Promise<domain.GamePatchInfo>;
+
 export function GetCurrentVersion():Promise<number>;
 
 export function GetGameInfoFromExePath(arg1:string):Promise<domain.GameInfo>;
@@ -31,6 +33,8 @@ export function GetGamesPerRow():Promise<number>;
 export function GetLatestReleaseInfo():Promise<domain.ReleaseInfo>;
 
 export function GetPersistentDataPath():Promise<string>;
+
+export function GetPlatform():Promise<string>;
 
 export function LaunchGameFromPath(arg1:string):Promise<void>;
 

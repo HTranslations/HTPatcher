@@ -5,6 +5,7 @@ import (
 	"htpatcher/internal/domain"
 	"htpatcher/internal/repository"
 	"htpatcher/internal/service"
+	goruntime "runtime"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -123,6 +124,11 @@ func (a *App) LogError(message string) {
 	})
 }
 
+// GetPlatform returns the current operating system (e.g. "windows", "linux", "darwin")
+func (a *App) GetPlatform() string {
+	return goruntime.GOOS
+}
+
 // ===== Game Service Methods =====
 
 // SelectGameExeFile opens a dialog to select a game executable
@@ -157,8 +163,13 @@ func (a *App) FetchAllPatches() ([]domain.PatchEntry, error) {
 	return a.patchService.FetchAllPatches()
 }
 
+// FetchGamePatchInfo fetches patch info for a specific game by store code
+func (a *App) FetchGamePatchInfo(storeCode string) (*domain.GamePatchInfo, error) {
+	return a.patchService.FetchGamePatchInfo(storeCode)
+}
+
 // ApplyPatch applies a patch to a game
-func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, launchAfterPatch bool, backupBeforePatch bool, injectMessageHide bool) error {
+func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, launchAfterPatch bool, backupBeforePatch bool, injectMessageHide bool, injectPatchChecker bool, storeCode string, patchVersion string) error {
 	if backupBeforePatch {
 		a.Log("Backing up game data...")
 		err := a.backupService.BackupGameData(&gameInfo, &patchInfo, injectMessageHide)
@@ -168,7 +179,7 @@ func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, l
 		}
 	}
 
-	err := a.patchService.ApplyPatch(a.ctx, &gameInfo, &patchInfo, injectMessageHide)
+	err := a.patchService.ApplyPatch(a.ctx, &gameInfo, &patchInfo, injectMessageHide, injectPatchChecker, storeCode, patchVersion)
 	if err != nil {
 		return err
 	}
