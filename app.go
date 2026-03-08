@@ -184,7 +184,7 @@ func (a *App) ApplyPatch(gameInfo domain.GameInfo, patchInfo domain.PatchInfo, l
 		return err
 	}
 
-	if launchAfterPatch {
+	if launchAfterPatch && goruntime.GOOS == "windows" {
 		a.Log("Launching game...")
 		err = a.gameService.LaunchGame(gameInfo.ExePath)
 		if err != nil {
