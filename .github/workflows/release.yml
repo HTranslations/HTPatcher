@@ -46,7 +46,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION=$(grep -oP 'const Version = \K\d+' internal/service/version.go)
+          VERSION=$(sed -n 's/^const Version = \([0-9]*\)/\1/p' internal/service/version.go)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
@@ -81,7 +81,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION=$(grep -oP 'const Version = \K\d+' internal/service/version.go)
+          VERSION=$(sed -n 's/^const Version = \([0-9]*\)/\1/p' internal/service/version.go)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
