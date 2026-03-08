@@ -40,7 +40,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
       - name: Extract version from version.go
         id: version
@@ -55,8 +55,13 @@ jobs:
         working-directory: ./frontend
         run: bun install
 
-      - name: Build application
+      - name: Build application (Windows)
+        if: matrix.os == 'windows-latest'
         run: wails build -clean -platform ${{ matrix.platform }}
+
+      - name: Build application (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: wails build -clean -platform ${{ matrix.platform }} -tags webkit2_41
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
