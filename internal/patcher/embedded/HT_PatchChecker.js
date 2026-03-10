@@ -63,7 +63,20 @@
         var data = JSON.parse(xhr.responseText);
         if (data.patches && data.patches.length > 0) {
           var latest = data.patches[0];
-          if (String(latest.version) !== String(CURRENT_VERSION)) {
+          if (CURRENT_VERSION === "0") {
+            // Manually patched — show full changelog, version unknown
+            var allPatches = [];
+            for (var i = 0; i < data.patches.length; i++) {
+              var p = data.patches[i];
+              allPatches.push({ version: p.version, releaseNotes: p.releaseNotes || [] });
+            }
+            _updateData = {
+              latestVersion: latest.version,
+              missedPatches: allPatches,
+              slug: data.slug || "",
+              manuallyPatched: true,
+            };
+          } else if (String(latest.version) !== String(CURRENT_VERSION)) {
             // Collect all patches newer than the installed version
             var missed = [];
             for (var i = 0; i < data.patches.length; i++) {
@@ -75,6 +88,7 @@
               latestVersion: latest.version,
               missedPatches: missed,
               slug: data.slug || "",
+              manuallyPatched: false,
             };
           }
         }
@@ -143,8 +157,13 @@
     var lines = [];
     var missed = this._htData.missedPatches || [];
 
-    lines.push({ text: "Patch Update Available!", y: 0, align: "center", color: "#f5c542", size: 20 });
-    lines.push({ text: "v" + CURRENT_VERSION + "  \u2192  v" + this._htData.latestVersion, y: 34, align: "center", color: "#ffffff", size: 16 });
+    if (this._htData.manuallyPatched) {
+      lines.push({ text: "Manually Patched", y: 0, align: "center", color: "#f5c542", size: 20 });
+      lines.push({ text: "Current version could not be determined", y: 34, align: "center", color: "#aaaaaa", size: 14 });
+    } else {
+      lines.push({ text: "Patch Update Available!", y: 0, align: "center", color: "#f5c542", size: 20 });
+      lines.push({ text: "v" + CURRENT_VERSION + "  \u2192  v" + this._htData.latestVersion, y: 34, align: "center", color: "#ffffff", size: 16 });
+    }
 
     var cy = 68;
     var lh = 24;
@@ -167,7 +186,8 @@
     this._totalHeight = cy;
     // Reserve space for the fixed footer (2 lines)
     var footerH = 56;
-    var scrollableH = this.height - this.standardPadding() * 2 - footerH;
+    var pad = typeof this.standardPadding === "function" ? this.standardPadding() : this.padding;
+    var scrollableH = this.height - pad * 2 - footerH;
     this._scrollableH = scrollableH;
     this._maxScroll = Math.max(0, this._totalHeight - scrollableH);
   };

@@ -89,7 +89,7 @@
           <!-- Store Code Input -->
           <div>
             <label for="rj-code-input" class="block text-sm font-medium text-zinc-400 mb-2">
-              Store Code <span class="text-zinc-500">(optional)</span>
+              Store Code
             </label>
             <input
               id="rj-code-input"
@@ -99,7 +99,7 @@
               placeholder="RJ00000000, d_123456, etc."
               class="w-full bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:border-zinc-600"
             />
-            <p class="text-xs text-zinc-500 mt-1">DLsite RJ code, DMM d_ code, or leave empty</p>
+            <p class="text-xs text-zinc-500 mt-1">DLsite RJ code, DMM d_ code</p>
           </div>
 
           <!-- Tags Input -->
@@ -162,7 +162,7 @@
             </button>
             <button
               onclick={onAddGame}
-              disabled={!friendlyName || friendlyName.trim().length === 0}
+              disabled={!friendlyName || friendlyName.trim().length === 0 || !rjCode || rjCode.trim().length === 0}
               class="px-4 py-2 text-sm bg-emerald-600 text-white disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed"
             >
               Add Game

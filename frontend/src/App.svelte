@@ -390,8 +390,8 @@
       }
 
       if (translatePatchInfo && currentTranslatingGame) {
-        const storeCode = gamePatchInfo?.storeCode || selectedPatch?.storeCode || currentTranslatingGame.storeCode || currentTranslatingGame.rjCode || "";
-        const patchVersion = gamePatchInfo?.patches?.[0]?.version || "";
+        const storeCode = gamePatchInfo?.storeCode || selectedPatch?.storeCode || currentTranslatingGame.storeCode || currentTranslatingGame.rjCode || "0";
+        const patchVersion = gamePatchInfo?.patches?.[0]?.version || "0";
         await ApplyPatch(
           translateGameInfo,
           translatePatchInfo,
