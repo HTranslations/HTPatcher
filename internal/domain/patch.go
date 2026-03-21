@@ -12,15 +12,16 @@ type PatchInfo struct {
 
 // Config defines patch configuration and rules
 type Config struct {
-	VariablesToPatch  []int              `json:"variablesToPatch"`
-	WrapWidth         int                `json:"wrapWidth"`
-	Version           int                `json:"version"`
-	KeyMode           string             `json:"keyMode"`
-	ParametersToPatch []ParameterToPatch `json:"parametersToPatch"`
-	PluginsToPatch    []PluginToPatch    `json:"pluginsToPatch"`
-	CreditsLocation   string             `json:"creditsLocation"`
-	DynamicWrapWidth  bool               `json:"dynamicWrapWidth"`
-	Locale            string             `json:"locale"`
+	VariablesToPatch   []int              `json:"variablesToPatch"`
+	WrapWidth          int                `json:"wrapWidth"`
+	Version            int                `json:"version"`
+	KeyMode            string             `json:"keyMode"`
+	ParametersToPatch  []ParameterToPatch `json:"parametersToPatch"`
+	PluginsToPatch     []PluginToPatch    `json:"pluginsToPatch"`
+	CreditsLocation    string             `json:"creditsLocation"`
+	DynamicWrapWidth   bool               `json:"dynamicWrapWidth"`
+	Locale             string             `json:"locale"`
+	CommandPatchScript string             `json:"commandPatchScript"`
 }
 
 // PluginToPatch defines how to patch a specific plugin

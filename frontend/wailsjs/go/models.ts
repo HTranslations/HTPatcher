@@ -212,6 +212,7 @@ export namespace domain {
 	    creditsLocation: string;
 	    dynamicWrapWidth: boolean;
 	    locale: string;
+	    commandPatchScript: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -228,6 +229,7 @@ export namespace domain {
 	        this.creditsLocation = source["creditsLocation"];
 	        this.dynamicWrapWidth = source["dynamicWrapWidth"];
 	        this.locale = source["locale"];
+	        this.commandPatchScript = source["commandPatchScript"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

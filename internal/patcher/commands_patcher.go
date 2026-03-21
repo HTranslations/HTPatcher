@@ -7,6 +7,8 @@ import (
 	"htpatcher/internal/util"
 	"slices"
 	"strings"
+
+	lua "github.com/yuin/gopher-lua"
 )
 
 // patchVariableValue handles translation of variable assignment values
@@ -103,6 +105,74 @@ func patchParameterValue(value any, dictionary map[string]string, keyMode string
 	}
 }
 
+// setupCommandPatchVM creates a Lua VM for custom command patching
+func setupCommandPatchVM(script string) (*lua.LState, error) {
+	L := lua.NewState()
+	L.SetGlobal("jsonDecode", L.NewFunction(jsonDecode))
+	L.SetGlobal("jsonEncode", L.NewFunction(jsonEncode))
+	if err := L.DoString(script); err != nil {
+		L.Close()
+		return nil, err
+	}
+	return L, nil
+}
+
+// applyCommandPatchScript calls the Lua patchCommand function on a single command.
+// The Lua function should return (command, changed) where changed is a boolean.
+// Only writes back to the command if changed is true, preserving original parameter order.
+func applyCommandPatchScript(L *lua.LState, command *rpgmaker.EventCommand) error {
+	fn := L.GetGlobal("patchCommand")
+	if fn == lua.LNil {
+		return nil
+	}
+
+	// Build Lua table from command
+	cmdTable := L.NewTable()
+	cmdTable.RawSetString("code", lua.LNumber(float64(command.Code)))
+	cmdTable.RawSetString("indent", lua.LNumber(float64(command.Indent)))
+
+	paramsTable := L.NewTable()
+	for i, p := range command.Parameters {
+		paramsTable.RawSetInt(i+1, convertToLuaValue(L, p))
+	}
+	cmdTable.RawSetString("parameters", paramsTable)
+
+	L.Push(fn)
+	L.Push(cmdTable)
+	if err := L.PCall(1, 2, nil); err != nil {
+		return err
+	}
+
+	changed := L.ToBool(-1)
+	result := L.Get(-2)
+	L.Pop(2)
+
+	if !changed {
+		return nil
+	}
+
+	resultTable, ok := result.(*lua.LTable)
+	if !ok {
+		return nil
+	}
+
+	// Update command from result
+	if code := resultTable.RawGetString("code"); code.Type() == lua.LTNumber {
+		command.Code = int(code.(lua.LNumber))
+	}
+	if indent := resultTable.RawGetString("indent"); indent.Type() == lua.LTNumber {
+		command.Indent = int(indent.(lua.LNumber))
+	}
+	if params := resultTable.RawGetString("parameters"); params.Type() == lua.LTTable {
+		paramsSlice := convertFromLuaValue(params)
+		if arr, ok := paramsSlice.([]interface{}); ok {
+			command.Parameters = arr
+		}
+	}
+
+	return nil
+}
+
 // patchCommands patches event commands
 func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInfo) ([]*rpgmaker.EventCommand, error) {
 	commandsToDelete := []int{}
@@ -111,6 +181,17 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 
 	km := patchInfo.Config.KeyMode
 	dict := patchInfo.Dictionary
+
+	// Set up Lua VM for custom command patching if script is provided
+	var luaVM *lua.LState
+	if patchInfo.Config.CommandPatchScript != "" {
+		var err error
+		luaVM, err = setupCommandPatchVM(patchInfo.Config.CommandPatchScript)
+		if err != nil {
+			return nil, err
+		}
+		defer luaVM.Close()
+	}
 
 	for commandIndex < len(commands) {
 		command := commands[commandIndex]
@@ -301,6 +382,13 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 						}
 					}
 				}
+			}
+		}
+
+		// Apply custom command patch script if configured
+		if luaVM != nil {
+			if err := applyCommandPatchScript(luaVM, command); err != nil {
+				return nil, err
 			}
 		}
 
