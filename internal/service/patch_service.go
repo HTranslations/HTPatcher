@@ -401,9 +401,13 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 		}
 	}
 
-	// Inject HT_PatchChecker plugin if requested
-	if injectPatchChecker && storeCode != "" && patchVersion != "" {
-		injectedFiles, err := s.pluginPatcher.InjectPatchChecker(ctx, gameInfo, storeCode, patchVersion)
+	// Always inject HT_PatchChecker plugin (handles update checking + auto wrap)
+	{
+		wrapWidth := 0
+		if patchInfo.Config != nil {
+			wrapWidth = patchInfo.Config.WrapWidth
+		}
+		injectedFiles, err := s.pluginPatcher.InjectPatchChecker(ctx, gameInfo, injectPatchChecker, storeCode, patchVersion, wrapWidth)
 		if err != nil {
 			s.logger.Warn(fmt.Sprintf("Failed to inject HT_PatchChecker: %v", err))
 		} else {
@@ -413,15 +417,15 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Read system information for credits
 	s.logger.Info("Reading system information...")
-	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
+	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "System.json"))
 	if err != nil {
-		s.logger.Error("Failed to read system.json")
+		s.logger.Error("Failed to read System.json")
 		return err
 	}
 
 	var systemInfo rpgmaker.System
 	if err := json.Unmarshal(systemInfoData, &systemInfo); err != nil {
-		s.logger.Error("Failed to parse system.json")
+		s.logger.Error("Failed to parse System.json")
 		return err
 	}
 

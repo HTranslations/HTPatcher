@@ -205,15 +205,15 @@ func (s *GameService) getMVMZGameInfo(gameInfo *domain.GameInfo) (*domain.GameIn
 		gameInfo.GameVersion = "mv"
 	}
 
-	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "system.json"))
+	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "System.json"))
 	if err != nil {
-		s.logger.Error("Failed to read system.json")
+		s.logger.Error("Failed to read System.json")
 		return nil, err
 	}
 
 	var systemInfo rpgmaker.System
 	if err := json.Unmarshal(systemInfoData, &systemInfo); err != nil {
-		s.logger.Error("Failed to parse system.json")
+		s.logger.Error("Failed to parse System.json")
 		return nil, err
 	}
 

@@ -272,21 +272,16 @@
                 Inject plugin to hide message boxes on right click
               </span>
             </label>
-            <label class="flex items-start gap-2 cursor-pointer">
+            <label class="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={injectPatchChecker}
                 onchange={(e) => onInjectPatchCheckerChange((e.target as HTMLInputElement).checked)}
-                class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0 mt-0.5"
+                class="w-4 h-4 bg-zinc-800 border-zinc-700 focus:ring-0 focus:ring-offset-0"
               />
-              <div class="flex flex-col">
-                <span class="text-sm text-zinc-400">
-                  Add HTranslations plugin to the game (super recommended!)
-                </span>
-                <span class="text-xs text-zinc-600">
-                  Notifies you in-game when a new translation patch update is available
-                </span>
-              </div>
+              <span class="text-sm text-zinc-400">
+                Check for patch updates in-game
+              </span>
             </label>
           {/if}
           <button

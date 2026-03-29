@@ -1,6 +1,6 @@
 /*:
  * @target MV MZ
- * @plugindesc [v1.0] HTranslations Patch Checker — checks for translation updates on startup.
+ * @plugindesc [v1.1] HTranslations — patch update checker + auto word wrap.
  * @author HTranslations
  * @url https://htranslations.com
  *
@@ -22,17 +22,32 @@
  * @type string
  * @default https://htranslations.com
  *
+ * @param checkForUpdates
+ * @text Check For Updates
+ * @desc Check for translation patch updates on startup.
+ * @type boolean
+ * @default true
+ *
+ * @param autoWrap
+ * @text Auto Word Wrap
+ * @desc Automatically wrap message text to fit the window width.
+ * @type boolean
+ * @default false
+ *
  * @help
  * ============================================================================
- * HTranslations Patch Checker
+ * HTranslations Plugin
  * ============================================================================
  *
- * This plugin checks for translation patch updates when the game starts.
- * If a newer version is available, it displays the patch notes and offers
- * a link to download the update.
+ * This plugin provides two features:
  *
- * Configure the Store Code and Current Patch Version in the plugin parameters.
- * The Current Patch Version should be updated each time you release a new patch.
+ * 1. Patch Update Checker — checks for translation patch updates when the
+ *    game starts. If a newer version is available, it displays the patch
+ *    notes and offers a link to download the update.
+ *
+ * 2. Auto Word Wrap — automatically wraps message text to fit the message
+ *    window width at display time, accounting for face graphics. This
+ *    eliminates the need for a fixed wrap width at export time.
  *
  * Compatible with RPG Maker MV and MZ.
  * ============================================================================
@@ -45,14 +60,208 @@
   var STORE_CODE = String(params["storeCode"] || "");
   var CURRENT_VERSION = String(params["currentVersion"] || "1");
   var API_BASE = String(params["apiBase"] || "https://htranslations.com");
+  var CHECK_UPDATES = String(params["checkForUpdates"] || "true") === "true";
+  var AUTO_WRAP = String(params["autoWrap"] || "false") === "true";
 
-  if (!STORE_CODE) return;
+  // -------------------------------------------------------------------------
+  // Auto Word Wrap — wraps message text to fit the window at display time
+  // -------------------------------------------------------------------------
+  if (AUTO_WRAP) {
+
+    var _HT_WM_startMessage = Window_Message.prototype.startMessage;
+    Window_Message.prototype.startMessage = function () {
+      _HT_WM_startMessage.call(this);
+      if (this._textState && this._textState.text && this.contents) {
+        this._textState.text = this._htAutoWrap(this._textState.text);
+      }
+    };
+
+    Window_Message.prototype._htAutoWrap = function (text) {
+      this.resetFontSettings();
+      var startX = this.newLineX(this._textState);
+      var maxWidth = this.contentsWidth() - startX;
+      if (maxWidth <= 0) return text;
+
+      var lines = text.split("\n");
+      var wrapped = [];
+      for (var i = 0; i < lines.length; i++) {
+        wrapped.push(this._htWrapLine(lines[i], maxWidth));
+      }
+      return wrapped.join("\n");
+    };
+
+    /**
+     * Read an escape sequence starting at text[i] (\x1b).
+     * Handles multi-letter codes (e.g. FS, PX) and special chars ({, }, $).
+     * Returns { end: next index, width: visible pixel width }.
+     */
+    Window_Message.prototype._htReadEscape = function (text, i) {
+      i++; // skip \x1b
+      var codeStart = i;
+      while (i < text.length) {
+        var cc = text.charCodeAt(i);
+        if ((cc >= 65 && cc <= 90) || (cc >= 97 && cc <= 122)) { i++; } else { break; }
+      }
+      var code = text.substring(codeStart, i).toUpperCase();
+      if (i === codeStart && i < text.length) i++; // single special char
+      if (i < text.length && text[i] === "[") {
+        i++;
+        while (i < text.length && text[i] !== "]") i++;
+        if (i < text.length) i++;
+      }
+      var w = 0;
+      if (code === "I") w = (ImageManager.iconWidth || 32) + 4;
+      return { end: i, width: w };
+    };
+
+    /** Extract only visible characters from text (strip escape sequences). */
+    Window_Message.prototype._htVisibleText = function (text) {
+      var visible = "";
+      var i = 0;
+      while (i < text.length) {
+        if (text[i] === "\x1b") {
+          i = this._htReadEscape(text, i).end;
+        } else {
+          visible += text[i];
+          i++;
+        }
+      }
+      return visible;
+    };
+
+    /** Sum escape-based pixel width (icons) in text. */
+    Window_Message.prototype._htEscapeWidth = function (text) {
+      var w = 0;
+      var i = 0;
+      while (i < text.length) {
+        if (text[i] === "\x1b") {
+          var esc = this._htReadEscape(text, i);
+          w += esc.width;
+          i = esc.end;
+        } else {
+          i++;
+        }
+      }
+      return w;
+    };
+
+    /**
+     * Wrap a single line to fit within maxWidth pixels.
+     * Uses word wrap with whole-string measurement for accurate kerning.
+     */
+    Window_Message.prototype._htWrapLine = function (line, maxWidth) {
+      // Tokenize into words and spaces (escape sequences attach to adjacent words)
+      var tokens = [];
+      var i = 0;
+      var word = "";
+      while (i < line.length) {
+        if (line[i] === "\x1b") {
+          var esc = this._htReadEscape(line, i);
+          word += line.substring(i, esc.end);
+          i = esc.end;
+        } else if (line[i] === " ") {
+          if (word) { tokens.push(word); word = ""; }
+          tokens.push(" ");
+          i++;
+        } else {
+          word += line[i];
+          i++;
+        }
+      }
+      if (word) tokens.push(word);
+
+      // Build wrapped output, tracking the current line's visible text
+      // so we can measure the whole line at once (accurate kerning)
+      var lines = [[]];
+      var curVisible = "";
+      var curEscW = 0;
+
+      for (var t = 0; t < tokens.length; t++) {
+        var tok = tokens[t];
+
+        if (tok === " ") {
+          var testWidth = this.contents.measureTextWidth(curVisible + " ") + curEscW;
+          if (testWidth > maxWidth) {
+            lines.push([]);
+            curVisible = "";
+            curEscW = 0;
+          } else {
+            lines[lines.length - 1].push(" ");
+            curVisible += " ";
+          }
+          continue;
+        }
+
+        var tokVisible = this._htVisibleText(tok);
+        var tokEscW = this._htEscapeWidth(tok);
+        var testWidth2 = this.contents.measureTextWidth(curVisible + tokVisible) + curEscW + tokEscW;
+
+        if (curVisible.length > 0 && testWidth2 > maxWidth) {
+          // Trim trailing space from current line
+          var curLine = lines[lines.length - 1];
+          if (curLine.length > 0 && curLine[curLine.length - 1] === " ") {
+            curLine.pop();
+            curVisible = curVisible.substring(0, curVisible.length - 1);
+          }
+          lines.push([]);
+          curVisible = "";
+          curEscW = 0;
+        }
+
+        // Word alone is wider than maxWidth — character-wrap it
+        if (this.contents.measureTextWidth(tokVisible) + tokEscW > maxWidth) {
+          var ci = 0;
+          while (ci < tok.length) {
+            if (tok[ci] === "\x1b") {
+              var cesc = this._htReadEscape(tok, ci);
+              if (cesc.width > 0) {
+                var cTestW = this.contents.measureTextWidth(curVisible) + curEscW + cesc.width;
+                if (cTestW > maxWidth && curVisible.length > 0) {
+                  lines.push([]);
+                  curVisible = "";
+                  curEscW = 0;
+                }
+                curEscW += cesc.width;
+              }
+              lines[lines.length - 1].push(tok.substring(ci, cesc.end));
+              ci = cesc.end;
+            } else {
+              var cTestW2 = this.contents.measureTextWidth(curVisible + tok[ci]) + curEscW;
+              if (cTestW2 > maxWidth && curVisible.length > 0) {
+                lines.push([]);
+                curVisible = "";
+                curEscW = 0;
+              }
+              curVisible += tok[ci];
+              lines[lines.length - 1].push(tok[ci]);
+              ci++;
+            }
+          }
+          continue;
+        }
+
+        lines[lines.length - 1].push(tok);
+        curVisible += tokVisible;
+        curEscW += tokEscW;
+      }
+
+      var output = [];
+      for (var li = 0; li < lines.length; li++) {
+        output.push(lines[li].join(""));
+      }
+      return output.join("\n");
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Patch Checker — fetch and display update notifications
+  // -------------------------------------------------------------------------
+  if (!CHECK_UPDATES || !STORE_CODE) return;
 
   var _updateData = null;
   var _fetchDone = false;
   var _shown = false;
 
-  // Fire fetch immediately on plugin load
   var url = API_BASE + "/api/patches/" + encodeURIComponent(STORE_CODE);
   var xhr = new XMLHttpRequest();
   xhr.open("GET", url);
@@ -64,7 +273,6 @@
         if (data.patches && data.patches.length > 0) {
           var latest = data.patches[0];
           if (CURRENT_VERSION === "0") {
-            // Manually patched — show full changelog, version unknown
             var allPatches = [];
             for (var i = 0; i < data.patches.length; i++) {
               var p = data.patches[i];
@@ -77,7 +285,6 @@
               manuallyPatched: true,
             };
           } else if (String(latest.version) !== String(CURRENT_VERSION)) {
-            // Collect all patches newer than the installed version
             var missed = [];
             for (var i = 0; i < data.patches.length; i++) {
               var p = data.patches[i];
@@ -99,7 +306,6 @@
   xhr.onerror = function () { _fetchDone = true; };
   xhr.send();
 
-  // Hook Scene_Title.update to show window once fetch is done
   var _Scene_Title_update = Scene_Title.prototype.update;
   Scene_Title.prototype.update = function () {
     _Scene_Title_update.call(this);
@@ -114,7 +320,6 @@
     }
   };
 
-  // Also block title command window input while our window is open
   var _Scene_Title_isBusy = Scene_Title.prototype.isBusy;
   Scene_Title.prototype.isBusy = function () {
     if (this._htWindow && this._htWindow.isOpen()) return true;
@@ -122,7 +327,7 @@
   };
 
   // -------------------------------------------------------------------------
-  // Window_HTPatch — simple scrollable text window
+  // Window_HTPatch — scrollable update notification window
   // -------------------------------------------------------------------------
   function Window_HTPatch(x, y, w, h, data) {
     this._htData = data;
@@ -152,7 +357,6 @@
     return 255;
   };
 
-
   Window_HTPatch.prototype._buildText = function () {
     var lines = [];
     var missed = this._htData.missedPatches || [];
@@ -179,12 +383,11 @@
           cy += lh;
         }
       }
-      cy += 8; // gap between patches
+      cy += 8;
     }
 
     this._textLines = lines;
     this._totalHeight = cy;
-    // Reserve space for the fixed footer (2 lines)
     var footerH = 56;
     var pad = typeof this.standardPadding === "function" ? this.standardPadding() : this.padding;
     var scrollableH = this.height - pad * 2 - footerH;
@@ -198,7 +401,6 @@
     var innerW = this.contentsWidth();
     var scrollableH = this._scrollableH;
 
-    // Draw scrollable patch notes (clipped to scrollable area)
     for (var i = 0; i < this._textLines.length; i++) {
       var l = this._textLines[i];
       var dy = l.y - this._scrollY;
@@ -209,7 +411,6 @@
       this.contents.drawText(l.text, 0, dy, innerW, l.size + 8, l.align || "left");
     }
 
-    // Draw fixed footer at bottom
     var footerY = this.contentsHeight() - 50;
     this.contents.fontSize = 13;
     this.contents.textColor = "#aaaaaa";
@@ -221,7 +422,6 @@
     this.contents.drawText("[ OK / Enter to close ]", 0, footerY + 24, innerW, 20, "center");
   };
 
-  // Override createContents to make a tall bitmap for scrolling
   Window_HTPatch.prototype.createContents = function () {
     var w = this.contentsWidth();
     var h = Math.max(this._totalHeight || 400, this.contentsHeight());

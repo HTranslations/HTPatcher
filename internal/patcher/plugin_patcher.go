@@ -197,8 +197,10 @@ func (p *PluginPatcher) InjectMessageWindowHidden(ctx context.Context, gameInfo 
 	return patchedFiles, nil
 }
 
-// InjectPatchChecker injects the HT_PatchChecker plugin into the game
-func (p *PluginPatcher) InjectPatchChecker(ctx context.Context, gameInfo *domain.GameInfo, storeCode string, patchVersion string) ([]string, error) {
+// InjectPatchChecker injects the HT_PatchChecker plugin into the game.
+// It is always injected. checkForUpdates controls the update notification feature.
+// autoWrap is enabled when wrapWidth is -1.
+func (p *PluginPatcher) InjectPatchChecker(ctx context.Context, gameInfo *domain.GameInfo, checkForUpdates bool, storeCode string, patchVersion string, wrapWidth int) ([]string, error) {
 	var patchedFiles []string
 
 	pluginsJsPath := filepath.Join(gameInfo.JsPath, "plugins.js")
@@ -228,11 +230,20 @@ func (p *PluginPatcher) InjectPatchChecker(ctx context.Context, gameInfo *domain
 		}
 	}
 
-	params := fmt.Sprintf(`{"storeCode":"%s","currentVersion":"%s","apiBase":"https://htranslations.com"}`, storeCode, patchVersion)
+	checkForUpdatesStr := "false"
+	if checkForUpdates && storeCode != "" && patchVersion != "" {
+		checkForUpdatesStr = "true"
+	}
+	autoWrapStr := "false"
+	if wrapWidth == -1 {
+		autoWrapStr = "true"
+	}
+
+	params := fmt.Sprintf(`{"storeCode":"%s","currentVersion":"%s","apiBase":"https://htranslations.com","checkForUpdates":"%s","autoWrap":"%s"}`, storeCode, patchVersion, checkForUpdatesStr, autoWrapStr)
 
 	plugins = append(plugins, domain.PluginData{
 		Name:        "HT_PatchChecker",
-		Description: "Checks for translation patch updates on startup",
+		Description: "HTranslations plugin — update checker + auto word wrap",
 		Status:      true,
 		Parameters:  json.RawMessage(params),
 	})
