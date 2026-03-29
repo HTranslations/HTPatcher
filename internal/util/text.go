@@ -25,6 +25,9 @@ func VisibleLength(text string) int {
 // Wrap wraps text to a specified width, accounting for RPG Maker placeholders.
 // Existing newlines are preserved and reset the line width counter.
 func Wrap(text string, width int) string {
+	if width < 0 {
+		return text
+	}
 	if width <= 0 {
 		width = 58
 	}
