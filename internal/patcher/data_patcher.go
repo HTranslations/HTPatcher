@@ -230,6 +230,9 @@ func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		if message2, ok := util.DictLookup(dict, km, "skill_message2", skill.Message2); ok {
 			skill.Message2 = util.Wrap(util.NoNewline(message2), patchInfo.Config.WrapWidth)
 		}
+		if note, ok := util.DictLookup(dict, km, "skill_note", skill.Note); ok {
+			skill.Note = note
+		}
 	}
 
 	return json.Marshal(skills)

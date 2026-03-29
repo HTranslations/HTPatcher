@@ -103,7 +103,7 @@ func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		patchStringProperty(obj, "description", dict, km, "skill_description", true, patchInfo.Config.WrapWidth)
 		patchStringProperty(obj, "message1", dict, km, "skill_message1", true, patchInfo.Config.WrapWidth)
 		patchStringProperty(obj, "message2", dict, km, "skill_message2", true, patchInfo.Config.WrapWidth)
-		patchStringProperty(obj, "note", dict, km, "skill_name", false, 0)
+		patchStringProperty(obj, "note", dict, km, "skill_note", false, 0)
 	}
 
 	return marshal.Write(arr)
