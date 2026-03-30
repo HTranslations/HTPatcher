@@ -24,7 +24,7 @@ func NewCreditsPatcher() *CreditsPatcher {
 }
 
 // AddCreditsToResource adds credits overlay to a game image
-func (c *CreditsPatcher) AddCreditsToResource(path string, encryptionKey string, creditsLocation string) error {
+func (c *CreditsPatcher) AddCreditsToResource(path string, encryptionKey string, creditsLocation string, customCreditsPng []byte) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -44,8 +44,12 @@ func (c *CreditsPatcher) AddCreditsToResource(path string, encryptionKey string,
 		return err
 	}
 
-	// Decode the credits image
-	creditsImg, err := png.Decode(bytes.NewReader(creditsPng))
+	// Decode the credits image (use custom if provided, otherwise embedded default)
+	creditsData := creditsPng
+	if len(customCreditsPng) > 0 {
+		creditsData = customCreditsPng
+	}
+	creditsImg, err := png.Decode(bytes.NewReader(creditsData))
 	if err != nil {
 		return err
 	}

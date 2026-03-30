@@ -68,34 +68,14 @@
   // -------------------------------------------------------------------------
   if (AUTO_WRAP) {
 
-    var _HT_WM_startMessage = Window_Message.prototype.startMessage;
-    Window_Message.prototype.startMessage = function () {
-      _HT_WM_startMessage.call(this);
-      if (this._textState && this._textState.text && this.contents) {
-        this._textState.text = this._htAutoWrap(this._textState.text);
-      }
-    };
-
-    Window_Message.prototype._htAutoWrap = function (text) {
-      this.resetFontSettings();
-      var startX = this.newLineX(this._textState);
-      var maxWidth = this.contentsWidth() - startX;
-      if (maxWidth <= 0) return text;
-
-      var lines = text.split("\n");
-      var wrapped = [];
-      for (var i = 0; i < lines.length; i++) {
-        wrapped.push(this._htWrapLine(lines[i], maxWidth));
-      }
-      return wrapped.join("\n");
-    };
+    // --- Wrap helpers on Window_Base (shared by Window_Message, Window_Help, etc.) ---
 
     /**
      * Read an escape sequence starting at text[i] (\x1b).
      * Handles multi-letter codes (e.g. FS, PX) and special chars ({, }, $).
      * Returns { end: next index, width: visible pixel width }.
      */
-    Window_Message.prototype._htReadEscape = function (text, i) {
+    Window_Base.prototype._htReadEscape = function (text, i) {
       i++; // skip \x1b
       var codeStart = i;
       while (i < text.length) {
@@ -115,7 +95,7 @@
     };
 
     /** Extract only visible characters from text (strip escape sequences). */
-    Window_Message.prototype._htVisibleText = function (text) {
+    Window_Base.prototype._htVisibleText = function (text) {
       var visible = "";
       var i = 0;
       while (i < text.length) {
@@ -130,7 +110,7 @@
     };
 
     /** Sum escape-based pixel width (icons) in text. */
-    Window_Message.prototype._htEscapeWidth = function (text) {
+    Window_Base.prototype._htEscapeWidth = function (text) {
       var w = 0;
       var i = 0;
       while (i < text.length) {
@@ -149,7 +129,7 @@
      * Wrap a single line to fit within maxWidth pixels.
      * Uses word wrap with whole-string measurement for accurate kerning.
      */
-    Window_Message.prototype._htWrapLine = function (line, maxWidth) {
+    Window_Base.prototype._htWrapLine = function (line, maxWidth) {
       // Tokenize into words and spaces (escape sequences attach to adjacent words)
       var tokens = [];
       var i = 0;
@@ -250,6 +230,43 @@
         output.push(lines[li].join(""));
       }
       return output.join("\n");
+    };
+
+    /** Wrap text to fit within a given pixel width. */
+    Window_Base.prototype._htWrapText = function (text, maxWidth) {
+      if (maxWidth <= 0) return text;
+      var lines = text.split("\n");
+      var wrapped = [];
+      for (var i = 0; i < lines.length; i++) {
+        wrapped.push(this._htWrapLine(lines[i], maxWidth));
+      }
+      return wrapped.join("\n");
+    };
+
+    // --- Window_Message hook ---
+
+    var _HT_WM_startMessage = Window_Message.prototype.startMessage;
+    Window_Message.prototype.startMessage = function () {
+      _HT_WM_startMessage.call(this);
+      if (this._textState && this._textState.text && this.contents) {
+        this.resetFontSettings();
+        var startX = this.newLineX(this._textState);
+        var maxWidth = this.contentsWidth() - startX;
+        this._textState.text = this._htWrapText(this._textState.text, maxWidth);
+      }
+    };
+
+    // --- Window_Help hook ---
+
+    var _HT_WH_setText = Window_Help.prototype.setText;
+    Window_Help.prototype.setText = function (text) {
+      if (text && this.contents) {
+        this.resetFontSettings();
+        var pad = typeof this.textPadding === "function" ? this.textPadding() : 6;
+        var maxWidth = this.contentsWidth() - pad;
+        text = this._htWrapText(text, maxWidth);
+      }
+      _HT_WH_setText.call(this, text);
     };
   }
 

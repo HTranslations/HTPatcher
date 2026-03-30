@@ -4,10 +4,11 @@ import "encoding/json"
 
 // PatchInfo contains all information about a patch file
 type PatchInfo struct {
-	PatchPath  string            `json:"patchPath"`
-	Dictionary map[string]string `json:"dictionary"`
-	Overrides  []string          `json:"overrides"`
-	Config     *Config           `json:"config"`
+	PatchPath      string            `json:"patchPath"`
+	Dictionary     map[string]string `json:"dictionary"`
+	Overrides      []string          `json:"overrides"`
+	Config         *Config           `json:"config"`
+	CreditsPng     []byte            `json:"-"`
 }
 
 // Config defines patch configuration and rules

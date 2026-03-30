@@ -106,6 +106,12 @@ func (s *PatchService) LoadPatchInfo(filePath string) (*domain.PatchInfo, error)
 		return nil, err
 	}
 
+	// Try to read custom credits image from patch
+	creditsPng, err := s.patchRepo.ReadFileFromZip(r, "credits.png")
+	if err == nil {
+		patchInfo.CreditsPng = creditsPng
+	}
+
 	return patchInfo, nil
 }
 
@@ -253,7 +259,7 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 				patchInfo.Config.CreditsLocation = "bottom_left"
 			}
 			s.logger.Info("Adding credits to title screen image...")
-			if err := s.creditsPatcher.AddCreditsToResource(titleImagePath, "", patchInfo.Config.CreditsLocation); err != nil {
+			if err := s.creditsPatcher.AddCreditsToResource(titleImagePath, "", patchInfo.Config.CreditsLocation, patchInfo.CreditsPng); err != nil {
 				s.logger.Warn(fmt.Sprintf("Failed to add credits: %v", err))
 			} else {
 				titleRelPath, _ := filepath.Rel(gameInfo.GameDir, titleImagePath)
@@ -451,7 +457,7 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Add credits to main screen
 	s.logger.Info("Adding credits to main screen image...")
-	err = s.creditsPatcher.AddCreditsToResource(pngPath, systemInfo.EncryptionKey, patchInfo.Config.CreditsLocation)
+	err = s.creditsPatcher.AddCreditsToResource(pngPath, systemInfo.EncryptionKey, patchInfo.Config.CreditsLocation, patchInfo.CreditsPng)
 	if err != nil {
 		s.logger.Error("Failed to add credits")
 		return err
