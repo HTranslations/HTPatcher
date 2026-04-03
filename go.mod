@@ -5,11 +5,12 @@ go 1.24.0
 require (
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.44.0
-	github.com/wailsapp/wails/v2 v2.11.0
+	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/yuin/gopher-lua v1.1.1
 )
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
