@@ -223,53 +223,58 @@ func (p *PluginPatcher) InjectPatchChecker(ctx context.Context, gameInfo *domain
 	}
 
 	// Check if already exists
+	alreadyExists := false
 	for _, plugin := range plugins {
 		if plugin.Name == "HT_PatchChecker" {
-			p.logger.Info("HT_PatchChecker plugin already present, skipping injection")
-			return nil, nil
+			alreadyExists = true
+			break
 		}
 	}
 
-	checkForUpdatesStr := "false"
-	if checkForUpdates && storeCode != "" && patchVersion != "" {
-		checkForUpdatesStr = "true"
+	if !alreadyExists {
+		checkForUpdatesStr := "false"
+		if checkForUpdates && storeCode != "" && patchVersion != "" {
+			checkForUpdatesStr = "true"
+		}
+		autoWrapStr := "false"
+		if wrapWidth == -1 {
+			autoWrapStr = "true"
+		}
+
+		params := fmt.Sprintf(`{"storeCode":"%s","currentVersion":"%s","apiBase":"https://htranslations.com","checkForUpdates":"%s","autoWrap":"%s"}`, storeCode, patchVersion, checkForUpdatesStr, autoWrapStr)
+
+		plugins = append(plugins, domain.PluginData{
+			Name:        "HT_PatchChecker",
+			Description: "HTranslations plugin — update checker + auto word wrap",
+			Status:      true,
+			Parameters:  json.RawMessage(params),
+		})
+
+		patchedPluginsJson, err := json.Marshal(plugins)
+		if err != nil {
+			return nil, err
+		}
+
+		before := jsContent[:startIndex]
+		after := jsContent[endIndex+1:]
+		patchedData := before + string(patchedPluginsJson) + after
+
+		if err := os.WriteFile(pluginsJsPath, []byte(patchedData), 0644); err != nil {
+			return nil, err
+		}
+		relPath, _ := filepath.Rel(gameInfo.GameDir, pluginsJsPath)
+		patchedFiles = append(patchedFiles, relPath)
+	} else {
+		p.logger.Info("HT_PatchChecker plugin already in plugins.js, skipping entry")
 	}
-	autoWrapStr := "false"
-	if wrapWidth == -1 {
-		autoWrapStr = "true"
-	}
 
-	params := fmt.Sprintf(`{"storeCode":"%s","currentVersion":"%s","apiBase":"https://htranslations.com","checkForUpdates":"%s","autoWrap":"%s"}`, storeCode, patchVersion, checkForUpdatesStr, autoWrapStr)
-
-	plugins = append(plugins, domain.PluginData{
-		Name:        "HT_PatchChecker",
-		Description: "HTranslations plugin — update checker + auto word wrap",
-		Status:      true,
-		Parameters:  json.RawMessage(params),
-	})
-
-	patchedPluginsJson, err := json.Marshal(plugins)
-	if err != nil {
-		return nil, err
-	}
-
-	before := jsContent[:startIndex]
-	after := jsContent[endIndex+1:]
-	patchedData := before + string(patchedPluginsJson) + after
-
-	if err := os.WriteFile(pluginsJsPath, []byte(patchedData), 0644); err != nil {
-		return nil, err
-	}
-	relPath, _ := filepath.Rel(gameInfo.GameDir, pluginsJsPath)
-	patchedFiles = append(patchedFiles, relPath)
-
-	// Copy the JS file to the plugins directory
+	// Always copy the JS file to ensure it's up to date
 	destPath := filepath.Join(gameInfo.JsPath, "plugins", "HT_PatchChecker.js")
 	if err := os.WriteFile(destPath, htPatchCheckerJS, 0644); err != nil {
 		return nil, err
 	}
-	relPath, _ = filepath.Rel(gameInfo.GameDir, destPath)
-	patchedFiles = append(patchedFiles, relPath)
+	jsRelPath, _ := filepath.Rel(gameInfo.GameDir, destPath)
+	patchedFiles = append(patchedFiles, jsRelPath)
 
 	p.logger.Info("Injected HT_PatchChecker plugin")
 	return patchedFiles, nil

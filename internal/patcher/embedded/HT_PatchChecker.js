@@ -268,6 +268,35 @@
       }
       _HT_WH_setText.call(this, text);
     };
+
+    // --- Window_BattleLog hook ---
+
+    var _HT_BL_addText = Window_BattleLog.prototype.addText;
+    Window_BattleLog.prototype.addText = function (text) {
+      if (text && this.contents) {
+        this.resetFontSettings();
+        // Get available text width from the line rect (works for both MV and MZ)
+        var maxWidth;
+        if (typeof this.lineRect === "function") {
+          maxWidth = this.lineRect(0).width;
+        } else if (typeof this.itemRectForText === "function") {
+          maxWidth = this.itemRectForText(0).width;
+        } else {
+          maxWidth = this.contentsWidth();
+        }
+        var wrapped = this._htWrapText(text, maxWidth);
+        var lines = wrapped.split("\n");
+        if (lines.length > 1) {
+          for (var i = 0; i < lines.length; i++) {
+            this._lines.push(lines[i]);
+          }
+          this.refresh();
+          this.wait();
+          return;
+        }
+      }
+      _HT_BL_addText.call(this, text);
+    };
   }
 
   // -------------------------------------------------------------------------
