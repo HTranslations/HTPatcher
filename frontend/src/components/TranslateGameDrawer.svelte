@@ -191,7 +191,7 @@
               <div class="bg-zinc-800 border border-zinc-700 max-h-34 overflow-y-auto shadow-lg">
                 {#if gamePatchInfo && gamePatchInfo.patches.length > 0}
                   <div
-                    class="w-full text-left px-4 py-2 text-sm text-zinc-300 border-b border-zinc-700 bg-zinc-700 border-l-2 border-l-emerald-500 {filteredPatches.length === 0 ? 'last:border-b-0' : ''}"
+                    class="relative w-full text-left px-4 py-2 text-sm text-zinc-300 border-b border-zinc-700 bg-zinc-700 border-l-2 border-l-emerald-500 {filteredPatches.length === 0 ? 'last:border-b-0' : ''}"
                   >
                     <span class="absolute top-1/2 -translate-y-1/2 right-4 bg-emerald-500 text-white text-xs font-bold px-1.5 py-0.5">✓</span>
                     <div class="flex-1 pr-8">

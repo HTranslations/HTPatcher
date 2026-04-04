@@ -306,7 +306,10 @@
         selectedPatch = null;
         if (gameCode) {
           try {
-            gamePatchInfo = await FetchGamePatchInfo(gameCode);
+            const fetchedInfo = await FetchGamePatchInfo(gameCode);
+            // Only use game patch info if it actually has downloadable patches
+            const hasDownload = fetchedInfo?.patches?.some((p: any) => p.download) ?? false;
+            gamePatchInfo = hasDownload ? fetchedInfo : null;
           } catch (e) {
             console.error("Failed to fetch game patch info:", e);
           }
