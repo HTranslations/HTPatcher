@@ -253,6 +253,7 @@
         var startX = this.newLineX(this._textState);
         var maxWidth = this.contentsWidth() - startX;
         this._textState.text = this._htWrapText(this._textState.text, maxWidth);
+        this._wordWrap = false;
       }
     };
 
