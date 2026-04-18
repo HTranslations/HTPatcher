@@ -1,14 +1,17 @@
 package domain
 
+import "htpatcher/internal/util"
+
 // GameInfo represents information about an RPG Maker game
 type GameInfo struct {
-	GameDir     string `json:"gameDir"`
-	ExePath     string `json:"exePath"`
-	DataPath    string `json:"dataPath"`
-	JsPath      string `json:"jsPath"`
-	ImgPath     string `json:"imgPath"`
-	GameTitle   string `json:"gameTitle"`
-	GameVersion string `json:"gameVersion"` // "mv", "mz", "vxace", or "" for unknown
+	GameDir     string           `json:"gameDir"`
+	ExePath     string           `json:"exePath"`
+	DataPath    string           `json:"dataPath"`
+	JsPath      string           `json:"jsPath"`
+	ImgPath     string           `json:"imgPath"`
+	GameTitle   string           `json:"gameTitle"`
+	GameVersion string           `json:"gameVersion"` // "mv", "mz", "vxace", or "" for unknown
+	DataCipher  *util.DataCipher `json:"-"`           // non-nil when data/*.json files are XOR-obfuscated
 }
 
 // LocatedGame represents a game stored in the user's collection

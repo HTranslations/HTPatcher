@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -323,7 +324,7 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Patch all data files
 	for _, jsonFile := range jsonFiles {
-		err = s.patcherEngine.PatchDataFile(ctx, jsonFile, patchInfo)
+		err = s.patcherEngine.PatchDataFile(ctx, jsonFile, patchInfo, gameInfo.DataCipher)
 		if err != nil {
 			s.logger.Error("Error patching file: " + filepath.Base(jsonFile))
 			return err
@@ -386,7 +387,12 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 				s.logger.Error("Failed to read override")
 				return err
 			}
-			err = os.WriteFile(filepath.Join(gameInfo.GameDir, override), data, 0644)
+			destPath := filepath.Join(gameInfo.GameDir, override)
+			cipher := gameInfo.DataCipher
+			if cipher != nil && !(strings.HasSuffix(strings.ToLower(destPath), ".json") && util.IsUnderDir(destPath, gameInfo.DataPath)) {
+				cipher = nil
+			}
+			err = util.WriteDataFile(destPath, data, cipher)
 			if err != nil {
 				s.logger.Error("Failed to write override")
 				return err
@@ -423,7 +429,7 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Read system information for credits
 	s.logger.Info("Reading system information...")
-	systemInfoData, err := os.ReadFile(filepath.Join(gameInfo.DataPath, "System.json"))
+	systemInfoData, err := util.ReadDataFile(filepath.Join(gameInfo.DataPath, "System.json"), gameInfo.DataCipher)
 	if err != nil {
 		s.logger.Error("Failed to read System.json")
 		return err

@@ -105,7 +105,7 @@ func (s *BackupService) backupMVMZGameData(gameInfo *domain.GameInfo, patchInfo 
 
 	// Parse System.json to get title image
 	systemJsonPath := filepath.Join(gameInfo.DataPath, "System.json")
-	systemJson, err := os.ReadFile(systemJsonPath)
+	systemJson, err := util.ReadDataFile(systemJsonPath, gameInfo.DataCipher)
 	if err != nil {
 		return err
 	}

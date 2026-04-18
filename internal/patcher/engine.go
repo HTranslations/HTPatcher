@@ -4,7 +4,7 @@ import (
 	"context"
 	"htpatcher/internal/domain"
 	"htpatcher/internal/domain/rpgmaker"
-	"os"
+	"htpatcher/internal/util"
 	"path/filepath"
 	"strings"
 )
@@ -29,13 +29,14 @@ func NewEngine(logger Logger) *Engine {
 	}
 }
 
-// PatchDataFile patches a single data file based on its type
-func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *domain.PatchInfo) error {
+// PatchDataFile patches a single data file based on its type. If cipher is
+// non-nil, the file is XOR-decrypted before patching and re-encrypted on write.
+func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *domain.PatchInfo, cipher *util.DataCipher) error {
 	filename := filepath.Base(filePath)
 	e.logger.Info("Patching: " + filename)
 
 	fileType := getDataFileTypeMap(filePath)
-	data, err := os.ReadFile(filePath)
+	data, err := util.ReadDataFile(filePath, cipher)
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *
 		return patchError
 	}
 
-	return os.WriteFile(filePath, patchedData, 0644)
+	return util.WriteDataFile(filePath, patchedData, cipher)
 }
 
 // getDataFileTypeMap determines the file type from the filename

@@ -556,3 +556,20 @@ export namespace domain {
 
 }
 
+export namespace util {
+	
+	export class DataCipher {
+	    K: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DataCipher(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.K = source["K"];
+	    }
+	}
+
+}
+
