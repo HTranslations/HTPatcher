@@ -14,6 +14,17 @@ type GameInfo struct {
 	DataCipher  *util.DataCipher `json:"-"`           // non-nil when data/*.json files are XOR-obfuscated
 }
 
+// EnsureDataCipher populates DataCipher by re-scanning rmmz_managers.js when
+// it hasn't been set yet. Needed because GameInfo crosses the Wails boundary
+// by value and DataCipher is excluded from JSON, so the field is dropped on
+// the round-trip from frontend.
+func (g *GameInfo) EnsureDataCipher() {
+	if g == nil || g.DataCipher != nil || g.GameVersion == "vxace" || g.JsPath == "" {
+		return
+	}
+	g.DataCipher = util.DetectDataCipher(g.JsPath)
+}
+
 // LocatedGame represents a game stored in the user's collection
 type LocatedGame struct {
 	Id           string   `json:"id"`

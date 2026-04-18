@@ -30,6 +30,7 @@ func (s *BackupService) BackupGameData(gameInfo *domain.GameInfo, patchInfo *dom
 		return s.backupVXAceGameData(gameInfo, patchInfo)
 	}
 
+	gameInfo.EnsureDataCipher()
 	return s.backupMVMZGameData(gameInfo, patchInfo, injectMessageHide)
 }
 

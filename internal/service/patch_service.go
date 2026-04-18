@@ -169,6 +169,11 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 		return s.applyVXAcePatch(ctx, gameInfo, patchInfo)
 	}
 
+	gameInfo.EnsureDataCipher()
+	if gameInfo.DataCipher != nil {
+		s.logger.Info(fmt.Sprintf("Applying data file XOR obfuscation (key=%d) on read/write", gameInfo.DataCipher.K))
+	}
+
 	// MV/MZ patching logic
 	return s.applyMVMZPatch(ctx, gameInfo, patchInfo, injectMessageHide, injectPatchChecker, storeCode, patchVersion)
 }
