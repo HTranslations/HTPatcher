@@ -210,7 +210,12 @@ func (s *GameService) getMVMZGameInfo(gameInfo *domain.GameInfo) (*domain.GameIn
 		s.logger.Info(fmt.Sprintf("Detected data file XOR obfuscation (key=%d)", gameInfo.DataCipher.K))
 	}
 
-	systemInfoData, err := util.ReadDataFile(filepath.Join(gameInfo.DataPath, "System.json"), gameInfo.DataCipher)
+	gameInfo.WrapperCipher = util.DetectWrapperCipher(dataPath)
+	if gameInfo.WrapperCipher != nil {
+		s.logger.Info("Detected custom data file wrapper encryption")
+	}
+
+	systemInfoData, err := util.ReadDataFile(filepath.Join(gameInfo.DataPath, "System.json"), gameInfo.DataCipher, gameInfo.WrapperCipher)
 	if err != nil {
 		s.logger.Error("Failed to read System.json")
 		return nil, err

@@ -10,8 +10,9 @@ type GameInfo struct {
 	JsPath      string           `json:"jsPath"`
 	ImgPath     string           `json:"imgPath"`
 	GameTitle   string           `json:"gameTitle"`
-	GameVersion string           `json:"gameVersion"` // "mv", "mz", "vxace", or "" for unknown
-	DataCipher  *util.DataCipher `json:"-"`           // non-nil when data/*.json files are XOR-obfuscated
+	GameVersion   string             `json:"gameVersion"` // "mv", "mz", "vxace", or "" for unknown
+	DataCipher    *util.DataCipher   `json:"-"`           // non-nil when data/*.json files are XOR-obfuscated
+	WrapperCipher *util.WrapperCipher `json:"-"`          // non-nil when data/*.json files use {uid,bid,data} wrapper encryption
 }
 
 // EnsureDataCipher populates DataCipher by re-scanning rmmz_managers.js when
@@ -23,6 +24,15 @@ func (g *GameInfo) EnsureDataCipher() {
 		return
 	}
 	g.DataCipher = util.DetectDataCipher(g.JsPath)
+}
+
+// EnsureWrapperCipher populates WrapperCipher by re-scanning the data directory
+// when it hasn't been set yet.
+func (g *GameInfo) EnsureWrapperCipher() {
+	if g == nil || g.WrapperCipher != nil || g.GameVersion == "vxace" || g.DataPath == "" {
+		return
+	}
+	g.WrapperCipher = util.DetectWrapperCipher(g.DataPath)
 }
 
 // LocatedGame represents a game stored in the user's collection

@@ -58,7 +58,12 @@ func (c *DataCipher) Transform(filename string, data []byte) []byte {
 }
 
 // ReadDataFile reads a json data file, decrypting it if cipher is non-nil.
-func ReadDataFile(path string, cipher *DataCipher) ([]byte, error) {
+// If wrapperCipher is non-nil, it takes precedence and handles the
+// {uid, bid, data} base64+XOR wrapper format.
+func ReadDataFile(path string, cipher *DataCipher, wrapperCipher *WrapperCipher) ([]byte, error) {
+	if wrapperCipher != nil {
+		return wrapperCipher.ReadFile(path)
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -70,8 +75,12 @@ func ReadDataFile(path string, cipher *DataCipher) ([]byte, error) {
 }
 
 // WriteDataFile writes a json data file, encrypting it if cipher is non-nil.
-// The input slice is not modified.
-func WriteDataFile(path string, data []byte, cipher *DataCipher) error {
+// The input slice is not modified. If wrapperCipher is non-nil, it takes
+// precedence and writes the {uid, bid, data} wrapper format.
+func WriteDataFile(path string, data []byte, cipher *DataCipher, wrapperCipher *WrapperCipher) error {
+	if wrapperCipher != nil {
+		return wrapperCipher.WriteFile(path, data)
+	}
 	out := data
 	if cipher != nil {
 		out = make([]byte, len(data))

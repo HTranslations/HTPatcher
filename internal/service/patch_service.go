@@ -170,8 +170,12 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 	}
 
 	gameInfo.EnsureDataCipher()
+	gameInfo.EnsureWrapperCipher()
 	if gameInfo.DataCipher != nil {
 		s.logger.Info(fmt.Sprintf("Applying data file XOR obfuscation (key=%d) on read/write", gameInfo.DataCipher.K))
+	}
+	if gameInfo.WrapperCipher != nil {
+		s.logger.Info("Applying data file wrapper encryption on read/write")
 	}
 
 	// MV/MZ patching logic
@@ -329,7 +333,7 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Patch all data files
 	for _, jsonFile := range jsonFiles {
-		err = s.patcherEngine.PatchDataFile(ctx, jsonFile, patchInfo, gameInfo.DataCipher)
+		err = s.patcherEngine.PatchDataFile(ctx, jsonFile, patchInfo, gameInfo.DataCipher, gameInfo.WrapperCipher)
 		if err != nil {
 			s.logger.Error("Error patching file: " + filepath.Base(jsonFile))
 			return err
@@ -394,10 +398,14 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 			}
 			destPath := filepath.Join(gameInfo.GameDir, override)
 			cipher := gameInfo.DataCipher
+			wrapperCipher := gameInfo.WrapperCipher
 			if cipher != nil && !(strings.HasSuffix(strings.ToLower(destPath), ".json") && util.IsUnderDir(destPath, gameInfo.DataPath)) {
 				cipher = nil
 			}
-			err = util.WriteDataFile(destPath, data, cipher)
+			if wrapperCipher != nil && !(strings.HasSuffix(strings.ToLower(destPath), ".json") && util.IsUnderDir(destPath, gameInfo.DataPath)) {
+				wrapperCipher = nil
+			}
+			err = util.WriteDataFile(destPath, data, cipher, wrapperCipher)
 			if err != nil {
 				s.logger.Error("Failed to write override")
 				return err
@@ -434,7 +442,7 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 
 	// Read system information for credits
 	s.logger.Info("Reading system information...")
-	systemInfoData, err := util.ReadDataFile(filepath.Join(gameInfo.DataPath, "System.json"), gameInfo.DataCipher)
+	systemInfoData, err := util.ReadDataFile(filepath.Join(gameInfo.DataPath, "System.json"), gameInfo.DataCipher, gameInfo.WrapperCipher)
 	if err != nil {
 		s.logger.Error("Failed to read System.json")
 		return err

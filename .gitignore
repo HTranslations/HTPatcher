@@ -2,3 +2,6 @@ build/bin
 node_modules
 frontend/dist
 .vscode/
+bin/
+*.py
+htpatch-format*

@@ -31,12 +31,13 @@ func NewEngine(logger Logger) *Engine {
 
 // PatchDataFile patches a single data file based on its type. If cipher is
 // non-nil, the file is XOR-decrypted before patching and re-encrypted on write.
-func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *domain.PatchInfo, cipher *util.DataCipher) error {
+// If wrapperCipher is non-nil, it handles the {uid,bid,data} wrapper format.
+func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *domain.PatchInfo, cipher *util.DataCipher, wrapperCipher *util.WrapperCipher) error {
 	filename := filepath.Base(filePath)
 	e.logger.Info("Patching: " + filename)
 
 	fileType := getDataFileTypeMap(filePath)
-	data, err := util.ReadDataFile(filePath, cipher)
+	data, err := util.ReadDataFile(filePath, cipher, wrapperCipher)
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *
 		return patchError
 	}
 
-	return util.WriteDataFile(filePath, patchedData, cipher)
+	return util.WriteDataFile(filePath, patchedData, cipher, wrapperCipher)
 }
 
 // getDataFileTypeMap determines the file type from the filename
