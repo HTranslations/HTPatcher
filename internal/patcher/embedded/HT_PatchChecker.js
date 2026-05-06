@@ -257,6 +257,20 @@
       }
     };
 
+    if (typeof Window_MessageEx !== "undefined") {
+      var _HT_WMEX_startMessage = Window_MessageEx.prototype.startMessage;
+      Window_MessageEx.prototype.startMessage = function () {
+        _HT_WMEX_startMessage.call(this);
+        if (this._textState && this._textState.text && this.contents) {
+          this.resetFontSettings();
+          var startX = this.newLineX(this._textState);
+          var maxWidth = this.contentsWidth() - startX;
+          this._textState.text = this._htWrapText(this._textState.text, maxWidth);
+          this._wordWrap = false;
+        }
+      };
+    }
+
     // --- Window_Help hook ---
 
     var _HT_WH_setText = Window_Help.prototype.setText;
