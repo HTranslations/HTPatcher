@@ -211,3 +211,30 @@ func (m MapData) MarshalJSON() ([]byte, error) {
 	type Alias MapData
 	return util.MarshalWithExtras((*Alias)(&m), m.Extras)
 }
+
+// MapInfo represents an entry from MapInfos.json.
+type MapInfo struct {
+	ID       int                        `json:"id"`
+	Expanded bool                       `json:"expanded"`
+	Name     string                     `json:"name"`
+	Order    int                        `json:"order"`
+	ParentID int                        `json:"parentId"`
+	ScrollX  float64                    `json:"scrollX"`
+	ScrollY  float64                    `json:"scrollY"`
+	Extras   map[string]json.RawMessage `json:"-"`
+}
+
+func (m *MapInfo) UnmarshalJSON(data []byte) error {
+	type Alias MapInfo
+	aux := (*Alias)(m)
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	m.Extras, _ = util.UnmarshalExtras(data, util.GetJSONFieldNames(m))
+	return nil
+}
+
+func (m MapInfo) MarshalJSON() ([]byte, error) {
+	type Alias MapInfo
+	return util.MarshalWithExtras((*Alias)(&m), m.Extras)
+}

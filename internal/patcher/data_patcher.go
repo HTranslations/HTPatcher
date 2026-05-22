@@ -204,6 +204,28 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	return json.Marshal(mapData)
 }
 
+// patchMapInfos patches editor map names from MapInfos.json.
+func patchMapInfos(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
+	var mapInfos []*rpgmaker.MapInfo
+	if err := json.Unmarshal(data, &mapInfos); err != nil {
+		return nil, err
+	}
+
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
+	for _, info := range mapInfos {
+		if info == nil {
+			continue
+		}
+		if name, ok := util.DictLookup(dict, km, "map_name", info.Name); ok {
+			info.Name = name
+		}
+	}
+
+	return json.Marshal(mapInfos)
+}
+
 // patchSkills patches skill data
 func patchSkills(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	var skills rpgmaker.SkillsData

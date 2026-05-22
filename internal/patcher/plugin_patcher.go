@@ -281,6 +281,11 @@ func (p *PluginPatcher) InjectPatchChecker(ctx context.Context, gameInfo *domain
 }
 
 // Lua helper functions
+const (
+	luaJSONTypeKey = "__htpatcher_json_type"
+	luaJSONArray   = "array"
+)
+
 func makeGetTranslationByKey(dictionary map[string]string, keyMode string) func(*lua.LState) int {
 	return func(L *lua.LState) int {
 		original := L.ToString(1)
@@ -295,6 +300,22 @@ func makeGetTranslationByKey(dictionary map[string]string, keyMode string) func(
 		L.Push(lua.LString(translation))
 		return 1
 	}
+}
+
+func markLuaJSONType(L *lua.LState, table *lua.LTable, jsonType string) {
+	mt := L.NewTable()
+	mt.RawSetString(luaJSONTypeKey, lua.LString(jsonType))
+	L.SetMetatable(table, mt)
+}
+
+func getLuaJSONType(table *lua.LTable) string {
+	mt := table.Metatable
+	if mtTable, ok := mt.(*lua.LTable); ok {
+		if jsonType, ok := mtTable.RawGetString(luaJSONTypeKey).(lua.LString); ok {
+			return string(jsonType)
+		}
+	}
+	return ""
 }
 
 func jsonDecode(L *lua.LState) int {
@@ -333,6 +354,7 @@ func convertToLuaValue(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LString(v)
 	case []interface{}:
 		table := L.NewTable()
+		markLuaJSONType(L, table, luaJSONArray)
 		for i, item := range v {
 			table.RawSetInt(i+1, convertToLuaValue(L, item))
 		}
@@ -360,6 +382,28 @@ func convertFromLuaValue(lv lua.LValue) interface{} {
 		return string(lv.(lua.LString))
 	case lua.LTTable:
 		table := lv.(*lua.LTable)
+		if getLuaJSONType(table) == luaJSONArray {
+			maxIndex := 0
+			table.ForEach(func(key, value lua.LValue) {
+				if num, ok := key.(lua.LNumber); ok {
+					if idx := int(num); idx > maxIndex {
+						maxIndex = idx
+					}
+				}
+			})
+
+			arr := make([]interface{}, maxIndex)
+			table.ForEach(func(key, value lua.LValue) {
+				if num, ok := key.(lua.LNumber); ok {
+					idx := int(num) - 1
+					if idx >= 0 && idx < maxIndex {
+						arr[idx] = convertFromLuaValue(value)
+					}
+				}
+			})
+			return arr
+		}
+
 		result := make(map[string]interface{})
 		isArray := true
 		maxIndex := 0

@@ -387,6 +387,32 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	return marshal.Write(obj)
 }
 
+// patchMapInfos patches MapInfos.rvdata2 editor map names.
+func patchMapInfos(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
+	raw, err := marshal.Parse(data)
+	if err != nil {
+		return nil, fmt.Errorf("parse error: %w", err)
+	}
+
+	mapInfos, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected map, got %T", raw)
+	}
+
+	km := patchInfo.Config.KeyMode
+	dict := patchInfo.Dictionary
+
+	for _, item := range mapInfos {
+		obj, ok := item.(*marshal.RubyObject)
+		if !ok {
+			continue
+		}
+		patchStringProperty(obj, "name", dict, km, "map_name", false, 0)
+	}
+
+	return marshal.Write(mapInfos)
+}
+
 // patchSystem patches System.rvdata2
 func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 	raw, err := marshal.Parse(data)

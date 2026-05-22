@@ -60,6 +60,8 @@ func (e *Engine) PatchDataFile(ctx context.Context, filePath string, patchInfo *
 		patchedData, patchError = patchItems(data, patchInfo)
 	case "map":
 		patchedData, patchError = patchMap(data, patchInfo)
+	case "mapinfos":
+		patchedData, patchError = patchMapInfos(data, patchInfo)
 	case "skills":
 		patchedData, patchError = patchSkills(data, patchInfo)
 	case "states":

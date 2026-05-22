@@ -123,6 +123,8 @@ func (e *Engine) patchDataFile(ctx context.Context, filePath string, patchInfo *
 		patchedData, err = patchCommonEvents(data, patchInfo)
 	case "map":
 		patchedData, err = patchMap(data, patchInfo)
+	case "mapinfos":
+		patchedData, err = patchMapInfos(data, patchInfo)
 	case "system":
 		patchedData, err = patchSystem(data, patchInfo)
 	case "scripts":
