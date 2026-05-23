@@ -205,6 +205,7 @@ export namespace domain {
 	export class Config {
 	    variablesToPatch: number[];
 	    wrapWidth: number;
+	    autoWrapRightMargin: number;
 	    version: number;
 	    keyMode: string;
 	    parametersToPatch: ParameterToPatch[];
@@ -222,6 +223,7 @@ export namespace domain {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.variablesToPatch = source["variablesToPatch"];
 	        this.wrapWidth = source["wrapWidth"];
+	        this.autoWrapRightMargin = source["autoWrapRightMargin"];
 	        this.version = source["version"];
 	        this.keyMode = source["keyMode"];
 	        this.parametersToPatch = this.convertValues(source["parametersToPatch"], ParameterToPatch);

@@ -4,25 +4,26 @@ import "encoding/json"
 
 // PatchInfo contains all information about a patch file
 type PatchInfo struct {
-	PatchPath      string            `json:"patchPath"`
-	Dictionary     map[string]string `json:"dictionary"`
-	Overrides      []string          `json:"overrides"`
-	Config         *Config           `json:"config"`
-	CreditsPng     []byte            `json:"-"`
+	PatchPath  string            `json:"patchPath"`
+	Dictionary map[string]string `json:"dictionary"`
+	Overrides  []string          `json:"overrides"`
+	Config     *Config           `json:"config"`
+	CreditsPng []byte            `json:"-"`
 }
 
 // Config defines patch configuration and rules
 type Config struct {
-	VariablesToPatch   []int              `json:"variablesToPatch"`
-	WrapWidth          int                `json:"wrapWidth"`
-	Version            int                `json:"version"`
-	KeyMode            string             `json:"keyMode"`
-	ParametersToPatch  []ParameterToPatch `json:"parametersToPatch"`
-	PluginsToPatch     []PluginToPatch    `json:"pluginsToPatch"`
-	CreditsLocation    string             `json:"creditsLocation"`
-	DynamicWrapWidth   bool               `json:"dynamicWrapWidth"`
-	Locale             string             `json:"locale"`
-	CommandPatchScript string             `json:"commandPatchScript"`
+	VariablesToPatch    []int              `json:"variablesToPatch"`
+	WrapWidth           int                `json:"wrapWidth"`
+	AutoWrapRightMargin int                `json:"autoWrapRightMargin"`
+	Version             int                `json:"version"`
+	KeyMode             string             `json:"keyMode"`
+	ParametersToPatch   []ParameterToPatch `json:"parametersToPatch"`
+	PluginsToPatch      []PluginToPatch    `json:"pluginsToPatch"`
+	CreditsLocation     string             `json:"creditsLocation"`
+	DynamicWrapWidth    bool               `json:"dynamicWrapWidth"`
+	Locale              string             `json:"locale"`
+	CommandPatchScript  string             `json:"commandPatchScript"`
 }
 
 // PluginToPatch defines how to patch a specific plugin

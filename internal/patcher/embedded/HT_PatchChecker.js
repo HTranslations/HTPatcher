@@ -34,6 +34,12 @@
  * @type boolean
  * @default false
  *
+ * @param autoWrapRightMargin
+ * @text Auto Wrap Right Margin
+ * @desc Extra pixels reserved on the right edge when auto wrapping. Useful for wide fonts and decorative windowskins.
+ * @type number
+ * @default 0
+ *
  * @help
  * ============================================================================
  * HTranslations Plugin
@@ -62,6 +68,8 @@
   var API_BASE = String(params["apiBase"] || "https://htranslations.com");
   var CHECK_UPDATES = String(params["checkForUpdates"] || "true") === "true";
   var AUTO_WRAP = String(params["autoWrap"] || "false") === "true";
+  var AUTO_WRAP_RIGHT_MARGIN = Number(params["autoWrapRightMargin"] || 0);
+  if (isNaN(AUTO_WRAP_RIGHT_MARGIN) || AUTO_WRAP_RIGHT_MARGIN < 0) AUTO_WRAP_RIGHT_MARGIN = 0;
 
   // -------------------------------------------------------------------------
   // Auto Word Wrap — wraps message text to fit the window at display time
@@ -243,6 +251,11 @@
       return wrapped.join("\n");
     };
 
+    /** Apply a configurable right margin for outlines and decorative window edges. */
+    Window_Base.prototype._htWrapWidth = function (maxWidth) {
+      return Math.max(1, maxWidth - AUTO_WRAP_RIGHT_MARGIN);
+    };
+
     // --- Window_Message hook ---
 
     var _HT_WM_startMessage = Window_Message.prototype.startMessage;
@@ -251,8 +264,9 @@
       if (this._textState && this._textState.text && this.contents) {
         this.resetFontSettings();
         var startX = this.newLineX(this._textState);
-        var maxWidth = this.contentsWidth() - startX;
+        var maxWidth = this._htWrapWidth(this.contentsWidth() - startX);
         this._textState.text = this._htWrapText(this._textState.text, maxWidth);
+        this._textState.height = this.calcTextHeight(this._textState);
         this._wordWrap = false;
       }
     };
@@ -264,8 +278,9 @@
         if (this._textState && this._textState.text && this.contents) {
           this.resetFontSettings();
           var startX = this.newLineX(this._textState);
-          var maxWidth = this.contentsWidth() - startX;
+          var maxWidth = this._htWrapWidth(this.contentsWidth() - startX);
           this._textState.text = this._htWrapText(this._textState.text, maxWidth);
+          this._textState.height = this.calcTextHeight(this._textState);
           this._wordWrap = false;
         }
       };
@@ -278,7 +293,7 @@
       if (text && this.contents) {
         this.resetFontSettings();
         var pad = typeof this.textPadding === "function" ? this.textPadding() : 6;
-        var maxWidth = this.contentsWidth() - pad;
+        var maxWidth = this._htWrapWidth(this.contentsWidth() - pad);
         text = this._htWrapText(text, maxWidth);
       }
       _HT_WH_setText.call(this, text);
@@ -299,14 +314,13 @@
         } else {
           maxWidth = this.contentsWidth();
         }
+        maxWidth = this._htWrapWidth(maxWidth);
         var wrapped = this._htWrapText(text, maxWidth);
         var lines = wrapped.split("\n");
         if (lines.length > 1) {
           for (var i = 0; i < lines.length; i++) {
-            this._lines.push(lines[i]);
+            _HT_BL_addText.call(this, lines[i]);
           }
-          this.refresh();
-          this.wait();
           return;
         }
       }

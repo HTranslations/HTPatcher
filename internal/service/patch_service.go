@@ -429,10 +429,12 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 	// Always inject HT_PatchChecker plugin (handles update checking + auto wrap)
 	{
 		wrapWidth := 0
+		autoWrapRightMargin := 0
 		if patchInfo.Config != nil {
 			wrapWidth = patchInfo.Config.WrapWidth
+			autoWrapRightMargin = patchInfo.Config.AutoWrapRightMargin
 		}
-		injectedFiles, err := s.pluginPatcher.InjectPatchChecker(ctx, gameInfo, injectPatchChecker, storeCode, patchVersion, wrapWidth)
+		injectedFiles, err := s.pluginPatcher.InjectPatchChecker(ctx, gameInfo, injectPatchChecker, storeCode, patchVersion, wrapWidth, autoWrapRightMargin)
 		if err != nil {
 			s.logger.Warn(fmt.Sprintf("Failed to inject HT_PatchChecker: %v", err))
 		} else {
