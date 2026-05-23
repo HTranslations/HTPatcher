@@ -416,7 +416,7 @@
   Window_HTPatch.prototype.constructor = Window_HTPatch;
 
   Window_HTPatch.prototype.initialize = function (x, y, w, h) {
-    if (Window_Base.prototype.initialize.length === 1) {
+    if (Utils.RPGMAKER_NAME === "MZ") {
       Window_Base.prototype.initialize.call(this, new Rectangle(x, y, w, h));
     } else {
       Window_Base.prototype.initialize.call(this, x, y, w, h);
