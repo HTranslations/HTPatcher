@@ -459,34 +459,38 @@ func (s *PatchService) applyMVMZPatch(ctx context.Context, gameInfo *domain.Game
 	// Find main screen image
 	s.logger.Info("Looking for main screen image...")
 	mainScreenImageName := systemInfo.Title1Name
-	pngPath := filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png")
-	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".rpgmvp")
-	}
-	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png_")
-	}
-	if _, err := os.Stat(pngPath); os.IsNotExist(err) {
-		s.logger.Error("Main screen image not found")
-		return errors.New("main screen image not found")
-	}
+	if strings.TrimSpace(mainScreenImageName) == "" {
+		s.logger.Warn("No main screen image configured; skipping credits")
+	} else {
+		pngPath := filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png")
+		if _, err := os.Stat(pngPath); os.IsNotExist(err) {
+			pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".rpgmvp")
+		}
+		if _, err := os.Stat(pngPath); os.IsNotExist(err) {
+			pngPath = filepath.Join(gameInfo.ImgPath, "titles1", mainScreenImageName+".png_")
+		}
+		if _, err := os.Stat(pngPath); os.IsNotExist(err) {
+			s.logger.Warn(fmt.Sprintf("Main screen image not found: %s; skipping credits", mainScreenImageName))
+		} else {
 
-	// Set default credits location
-	if patchInfo.Config.CreditsLocation == "" {
-		patchInfo.Config.CreditsLocation = "bottom_left"
-	}
+			// Set default credits location
+			if patchInfo.Config.CreditsLocation == "" {
+				patchInfo.Config.CreditsLocation = "bottom_left"
+			}
 
-	// Add credits to main screen
-	s.logger.Info("Adding credits to main screen image...")
-	err = s.creditsPatcher.AddCreditsToResource(pngPath, systemInfo.EncryptionKey, patchInfo.Config.CreditsLocation, patchInfo.CreditsPng)
-	if err != nil {
-		s.logger.Error("Failed to add credits")
-		return err
-	}
+			// Add credits to main screen
+			s.logger.Info("Adding credits to main screen image...")
+			err = s.creditsPatcher.AddCreditsToResource(pngPath, systemInfo.EncryptionKey, patchInfo.Config.CreditsLocation, patchInfo.CreditsPng)
+			if err != nil {
+				s.logger.Error("Failed to add credits")
+				return err
+			}
 
-	// Track the title image
-	titleImageRelPath, _ := filepath.Rel(gameInfo.GameDir, pngPath)
-	patchedFiles = append(patchedFiles, titleImageRelPath)
+			// Track the title image
+			titleImageRelPath, _ := filepath.Rel(gameInfo.GameDir, pngPath)
+			patchedFiles = append(patchedFiles, titleImageRelPath)
+		}
+	}
 
 	// Save patch summary
 	s.logger.Info("Saving patch summary...")
