@@ -378,6 +378,12 @@ func convertToLuaValue(L *lua.LState, value interface{}) lua.LValue {
 			table.RawSetString(k, convertToLuaValue(L, val))
 		}
 		return table
+	case *util.OrderedMap:
+		table := L.NewTable()
+		for _, k := range v.Keys {
+			table.RawSetString(k, convertToLuaValue(L, v.Values[k]))
+		}
+		return table
 	default:
 		return lua.LNil
 	}
