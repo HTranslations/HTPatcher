@@ -31,9 +31,10 @@ func (t Trait) MarshalJSON() ([]byte, error) {
 
 // EventCommand represents a command in an event or troop page
 type EventCommand struct {
-	Code       int   `json:"code"`
-	Indent     int   `json:"indent"`
-	Parameters []any `json:"parameters"`
+	Code       int                        `json:"code"`
+	Indent     int                        `json:"indent"`
+	Parameters []any                      `json:"parameters"`
+	Extras     map[string]json.RawMessage `json:"-"`
 }
 
 // UnmarshalJSON custom unmarshals EventCommand to preserve object key order in Parameters.
@@ -89,7 +90,13 @@ func (e *EventCommand) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	e.Extras, _ = util.UnmarshalExtras(data, util.GetJSONFieldNames(e))
 	return nil
+}
+
+func (e EventCommand) MarshalJSON() ([]byte, error) {
+	type Alias EventCommand
+	return util.MarshalWithExtras((*Alias)(&e), e.Extras)
 }
 
 // parseParametersArray parses the parameters array, converting objects to *util.OrderedMap.

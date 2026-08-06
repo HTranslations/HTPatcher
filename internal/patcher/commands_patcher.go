@@ -2,6 +2,7 @@ package patcher
 
 import (
 	"encoding/json"
+	"fmt"
 	"htpatcher/internal/domain"
 	"htpatcher/internal/domain/rpgmaker"
 	"htpatcher/internal/util"
@@ -106,8 +107,9 @@ func patchParameterValue(value any, dictionary map[string]string, keyMode string
 }
 
 // setupCommandPatchVM creates a Lua VM for custom command patching
-func setupCommandPatchVM(script string) (*lua.LState, error) {
+func setupCommandPatchVM(script string, dictionary map[string]string, keyMode string) (*lua.LState, error) {
 	L := lua.NewState()
+	L.SetGlobal("getTranslationByKey", L.NewFunction(makeGetTypedTranslationByKey(dictionary, keyMode)))
 	L.SetGlobal("jsonDecode", L.NewFunction(jsonDecode))
 	L.SetGlobal("jsonEncode", L.NewFunction(jsonEncode))
 	if err := L.DoString(script); err != nil {
@@ -115,6 +117,23 @@ func setupCommandPatchVM(script string) (*lua.LState, error) {
 		return nil, err
 	}
 	return L, nil
+}
+
+// makeGetTypedTranslationByKey exposes typed dictionary lookup to project-level
+// command patch scripts. The Lua signature is getTranslationByKey(original,
+// entryType). Unknown keys are returned unchanged so scripts can safely compare
+// the result with the source value.
+func makeGetTypedTranslationByKey(dictionary map[string]string, keyMode string) func(*lua.LState) int {
+	return func(L *lua.LState) int {
+		original := L.ToString(1)
+		entryType := L.ToString(2)
+		translation, ok := util.DictLookup(dictionary, keyMode, entryType, original)
+		if !ok {
+			translation = original
+		}
+		L.Push(lua.LString(translation))
+		return 1
+	}
 }
 
 // applyCommandPatchScript calls the Lua patchCommand function on a single command.
@@ -186,7 +205,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 	var luaVM *lua.LState
 	if patchInfo.Config.CommandPatchScript != "" {
 		var err error
-		luaVM, err = setupCommandPatchVM(patchInfo.Config.CommandPatchScript)
+		luaVM, err = setupCommandPatchVM(patchInfo.Config.CommandPatchScript, dict, km)
 		if err != nil {
 			return nil, err
 		}
@@ -201,6 +220,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			if len(command.Parameters) > 4 {
 				if key, ok := command.Parameters[4].(string); ok {
 					if speakerName, ok := util.DictLookup(dict, km, "speaker", key); ok {
+						setHTOriginal(&command.Extras, "parameters[4]", key)
 						command.Parameters[4] = speakerName
 					}
 				}
@@ -236,6 +256,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			commandIndex--
 
 			if translation, ok := util.DictLookup(dict, km, "dialogue", fullText); ok {
+				setHTOriginal(&dialogueCommands[0].Extras, "parameters[0]", fullText)
 				dialogueCommands[0].Parameters[0] = util.Wrap(translation, wrapWidth)
 				// Only keep the first command in the dialogue
 				for k := (commandIndex - len(dialogueCommands) + 2); k <= commandIndex; k++ {
@@ -262,6 +283,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			commandIndex--
 
 			if translation, ok := util.DictLookup(dict, km, "message", fullText); ok {
+				setHTOriginal(&scrollingCommands[0].Extras, "parameters[0]", fullText)
 				scrollingCommands[0].Parameters[0] = util.Wrap(util.NoNewline(translation), patchInfo.Config.WrapWidth)
 				// Only keep the first command
 				for k := (commandIndex - len(scrollingCommands) + 2); k <= commandIndex; k++ {
@@ -276,6 +298,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 				for i, choice := range choices {
 					if choice, ok := choice.(string); ok {
 						if translation, ok := util.DictLookup(dict, km, "choice", choice); ok {
+							setHTOriginal(&command.Extras, fmt.Sprintf("parameters[0][%d]", i), choice)
 							command.Parameters[0].([]any)[i] = translation
 						}
 					}
@@ -287,6 +310,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 		if command.Code == 108 {
 			if text, ok := command.Parameters[0].(string); ok {
 				if translation, ok := util.DictLookup(dict, km, "comment", text); ok {
+					setHTOriginal(&command.Extras, "parameters[0]", text)
 					command.Parameters[0] = translation
 				}
 			}
@@ -296,6 +320,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 		if command.Code == 408 {
 			if description, ok := command.Parameters[0].(string); ok {
 				if translation, ok := util.DictLookup(dict, km, "comment", description); ok {
+					setHTOriginal(&command.Extras, "parameters[0]", description)
 					command.Parameters[0] = util.Wrap(util.NoNewline(translation), patchInfo.Config.WrapWidth)
 				}
 			}
@@ -317,7 +342,11 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 					if slices.Contains(patchInfo.Config.VariablesToPatch, int(varID)) {
 						// Check if param 4 is a string value
 						if value, ok := command.Parameters[4].(string); ok {
-							command.Parameters[4] = patchVariableValue(value, dict, km)
+							patchedValue := patchVariableValue(value, dict, km)
+							if patchedValue != value {
+								setHTOriginal(&command.Extras, "parameters[4]", value)
+								command.Parameters[4] = patchedValue
+							}
 						}
 					}
 				}
@@ -346,6 +375,7 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 			// Look up translation
 			if translation, ok := util.DictLookup(dict, km, "script", fullScript); ok {
 				// Put entire translation in 355 command
+				setHTOriginal(&command.Extras, "parameters[0]", fullScript)
 				command.Parameters[0] = translation
 
 				// Mark all 655 commands for deletion
@@ -354,7 +384,9 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 				}
 			}
 
-			commandIndex = nextIndex - 1
+			// Do not skip continuation commands here. Project-level command patch
+			// scripts must receive each code 655 command because some plugins use
+			// unquoted continuation lines as their display-text arguments.
 		}
 
 		// Command 357 is a plugin call, param 0 is the plugin name, param 1 is the function name, param 3 is the options
@@ -368,15 +400,25 @@ func patchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInf
 								case "string":
 									if options, ok := command.Parameters[3].(string); ok {
 										if translation, ok := util.DictLookup(dict, km, "plugin_parameter", options); ok {
+											setHTOriginal(&command.Extras, "parameters[3]", options)
 											command.Parameters[3] = util.Wrap(translation, patchInfo.Config.WrapWidth)
 										}
 									}
 								case "array":
 									if options, ok := command.Parameters[3].([]any); ok {
-										command.Parameters[3] = patchParameterValue(options, dict, km)
+										patchedOptions := patchParameterValue(options, dict, km)
+										if originalValueString(patchedOptions) != originalValueString(options) {
+											setHTOriginal(&command.Extras, "parameters[3]", originalValueString(options))
+											command.Parameters[3] = patchedOptions
+										}
 									}
 								case "object":
-									command.Parameters[3] = patchParameterValue(command.Parameters[3], dict, km)
+									options := command.Parameters[3]
+									patchedOptions := patchParameterValue(options, dict, km)
+									if originalValueString(patchedOptions) != originalValueString(options) {
+										setHTOriginal(&command.Extras, "parameters[3]", originalValueString(options))
+										command.Parameters[3] = patchedOptions
+									}
 								}
 							}
 						}
