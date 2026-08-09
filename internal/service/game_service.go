@@ -63,57 +63,63 @@ func (s *GameService) GetGameInfoFromExePath(filePath string) (*domain.GameInfo,
 	gameInfo.GameDir = filepath.Dir(filePath)
 	s.logger.Info(fmt.Sprintf("Game directory: %s", gameInfo.GameDir))
 
-	// Check for VX Ace game first
+	// Check for VX/VX Ace games first.
 	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
-	dataPathVXA := filepath.Join(gameInfo.GameDir, "Data")
+	rgss2aPath := filepath.Join(gameInfo.GameDir, "Game.rgss2a")
+	dataPathRGSS := filepath.Join(gameInfo.GameDir, "Data")
 
-	// Check if this is a VX Ace game
-	isVXAce := false
 	if _, err := os.Stat(rgss3aPath); err == nil {
-		// Has Game.rgss3a - definitely VX Ace
-		isVXAce = true
-	} else if _, err := os.Stat(dataPathVXA); err == nil {
-		// Check for .rvdata2 files in Data folder
-		files, err := os.ReadDir(dataPathVXA)
+		return s.getRGSSGameInfo(&gameInfo, "vxace", rgss3aPath, dataPathRGSS)
+	}
+	if _, err := os.Stat(rgss2aPath); err == nil {
+		return s.getRGSSGameInfo(&gameInfo, "vx", rgss2aPath, dataPathRGSS)
+	}
+	if _, err := os.Stat(dataPathRGSS); err == nil {
+		files, err := os.ReadDir(dataPathRGSS)
 		if err == nil {
 			for _, f := range files {
 				if strings.HasSuffix(strings.ToLower(f.Name()), ".rvdata2") {
-					isVXAce = true
-					break
+					return s.getRGSSGameInfo(&gameInfo, "vxace", rgss3aPath, dataPathRGSS)
+				}
+				if strings.HasSuffix(strings.ToLower(f.Name()), ".rvdata") {
+					return s.getRGSSGameInfo(&gameInfo, "vx", rgss2aPath, dataPathRGSS)
 				}
 			}
 		}
-	}
-
-	if isVXAce {
-		return s.getVXAceGameInfo(&gameInfo, rgss3aPath, dataPathVXA)
 	}
 
 	// Standard MV/MZ game detection
 	return s.getMVMZGameInfo(&gameInfo)
 }
 
-// getVXAceGameInfo handles VX Ace game detection
-func (s *GameService) getVXAceGameInfo(gameInfo *domain.GameInfo, rgss3aPath, dataPath string) (*domain.GameInfo, error) {
-	gameInfo.GameVersion = "vxace"
+// getRGSSGameInfo handles VX and VX Ace game detection.
+func (s *GameService) getRGSSGameInfo(gameInfo *domain.GameInfo, gameVersion, archivePath, dataPath string) (*domain.GameInfo, error) {
+	gameInfo.GameVersion = gameVersion
 	gameInfo.DataPath = dataPath
+	engineName := "VX Ace"
+	dataFile := "System.rvdata2"
+	archiveName := "Game.rgss3a"
+	if gameVersion == "vx" {
+		engineName = "VX"
+		dataFile = "System.rvdata"
+		archiveName = "Game.rgss2a"
+	}
 
 	// VX Ace doesn't have js or img paths in the same way
 	gameInfo.JsPath = ""
 	gameInfo.ImgPath = filepath.Join(gameInfo.GameDir, "Graphics")
 
-	// Try to read game title from System.rvdata2
-	systemPath := filepath.Join(dataPath, "System.rvdata2")
+	systemPath := filepath.Join(dataPath, dataFile)
 
 	// If archive exists and System.rvdata2 doesn't exist in Data folder, read from archive
 	if _, err := os.Stat(systemPath); os.IsNotExist(err) {
-		if _, err := os.Stat(rgss3aPath); err == nil {
+		if _, err := os.Stat(archivePath); err == nil {
 			// Need to read from archive
-			s.logger.Info("Reading system data from Game.rgss3a archive")
-			title, err := s.readTitleFromArchive(rgss3aPath)
+			s.logger.Info("Reading system data from " + archiveName + " archive")
+			title, err := s.readTitleFromArchive(archivePath, dataFile)
 			if err != nil {
 				s.logger.Warn(fmt.Sprintf("Failed to read title from archive: %v", err))
-				gameInfo.GameTitle = "Unknown VX Ace Game"
+				gameInfo.GameTitle = "Unknown " + engineName + " Game"
 			} else {
 				gameInfo.GameTitle = title
 			}
@@ -125,39 +131,39 @@ func (s *GameService) getVXAceGameInfo(gameInfo *domain.GameInfo, rgss3aPath, da
 	if _, err := os.Stat(systemPath); err == nil {
 		data, err := os.ReadFile(systemPath)
 		if err != nil {
-			s.logger.Warn(fmt.Sprintf("Failed to read System.rvdata2: %v", err))
-			gameInfo.GameTitle = "Unknown VX Ace Game"
+			s.logger.Warn(fmt.Sprintf("Failed to read %s: %v", dataFile, err))
+			gameInfo.GameTitle = "Unknown " + engineName + " Game"
 			return gameInfo, nil
 		}
 
 		raw, err := marshal.Parse(data)
 		if err != nil {
-			s.logger.Warn(fmt.Sprintf("Failed to parse System.rvdata2: %v", err))
-			gameInfo.GameTitle = "Unknown VX Ace Game"
+			s.logger.Warn(fmt.Sprintf("Failed to parse %s: %v", dataFile, err))
+			gameInfo.GameTitle = "Unknown " + engineName + " Game"
 			return gameInfo, nil
 		}
 
 		gameInfo.GameTitle = rpgmakervxa.GetSystemTitle(raw)
 		if gameInfo.GameTitle == "" {
-			gameInfo.GameTitle = "Unknown VX Ace Game"
+			gameInfo.GameTitle = "Unknown " + engineName + " Game"
 		}
 	} else {
-		gameInfo.GameTitle = "Unknown VX Ace Game"
+		gameInfo.GameTitle = "Unknown " + engineName + " Game"
 	}
 
-	s.logger.Info(fmt.Sprintf("VX Ace game detected: \"%s\"", gameInfo.GameTitle))
+	s.logger.Info(fmt.Sprintf("%s game detected: \"%s\"", engineName, gameInfo.GameTitle))
 	return gameInfo, nil
 }
 
-// readTitleFromArchive reads the game title from a Game.rgss3a archive
-func (s *GameService) readTitleFromArchive(archivePath string) (string, error) {
+// readTitleFromArchive reads the game title from an RGSSAD archive.
+func (s *GameService) readTitleFromArchive(archivePath, dataFile string) (string, error) {
 	archive, err := rgss3a.Open(archivePath)
 	if err != nil {
 		return "", err
 	}
 	defer archive.Close()
 
-	data, err := archive.ReadFile("Data/System.rvdata2")
+	data, err := archive.ReadFile("Data/" + dataFile)
 	if err != nil {
 		return "", err
 	}

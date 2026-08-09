@@ -260,7 +260,7 @@
               {/if}
             </span>
           </label>
-          {#if gameInfo && gameInfo.gameVersion !== "vxace"}
+          {#if gameInfo && gameInfo.gameVersion !== "vx" && gameInfo.gameVersion !== "vxace"}
             <label class="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -296,4 +296,3 @@
     </div>
   </div>
 {/if}
-

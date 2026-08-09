@@ -26,7 +26,7 @@ func NewBackupService(logger Logger) *BackupService {
 // BackupGameData creates a backup of game data before patching
 func (s *BackupService) BackupGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo, injectMessageHide bool) error {
 	// Route to VX Ace backup if needed
-	if gameInfo.GameVersion == "vxace" {
+	if gameInfo.GameVersion == "vx" || gameInfo.GameVersion == "vxace" {
 		return s.backupVXAceGameData(gameInfo, patchInfo)
 	}
 
@@ -38,25 +38,29 @@ func (s *BackupService) BackupGameData(gameInfo *domain.GameInfo, patchInfo *dom
 // backupVXAceGameData creates a backup for VX Ace games
 func (s *BackupService) backupVXAceGameData(gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
 	filesToBackup := []string{}
+	archiveName, extension := "Game.rgss3a", ".rvdata2"
+	if gameInfo.GameVersion == "vx" {
+		archiveName, extension = "Game.rgss2a", ".rvdata"
+	}
 
-	// Check if Game.rgss3a exists (packed game) - back it up first
-	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
+	// Back up the packed archive before extraction.
+	archivePath := filepath.Join(gameInfo.GameDir, archiveName)
 	isPacked := false
-	if _, err := os.Stat(rgss3aPath); err == nil {
+	if _, err := os.Stat(archivePath); err == nil {
 		isPacked = true
-		filesToBackup = append(filesToBackup, "Game.rgss3a")
+		filesToBackup = append(filesToBackup, archiveName)
 	}
 
 	// Only try to list .rvdata2 files if Data folder exists
 	if _, err := os.Stat(gameInfo.DataPath); err == nil {
-		rvdata2Files, err := util.ListFilesWithExtension(gameInfo.DataPath, ".rvdata2")
+		dataFiles, err := util.ListFilesWithExtension(gameInfo.DataPath, extension)
 		if err != nil {
 			// If packed, this is okay - files are in archive
 			if !isPacked {
 				return err
 			}
 		} else {
-			for _, file := range rvdata2Files {
+			for _, file := range dataFiles {
 				relPath, err := filepath.Rel(gameInfo.GameDir, file)
 				if err != nil {
 					return err
@@ -245,9 +249,15 @@ func (s *BackupService) RestoreBackup(gameInfo *domain.GameInfo) error {
 	os.RemoveAll(backupPath)
 	s.logger.Info(fmt.Sprintf("Removed backup folder %s", backupPath))
 
-	// If Game.rgss3a was restored, remove the Data folder since it was created by extraction
-	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
-	if _, err := os.Stat(rgss3aPath); err == nil {
+	// If a packed archive was restored, remove the Data folder created by extraction.
+	packedRestored := false
+	for _, archiveName := range []string{"Game.rgss2a", "Game.rgss3a"} {
+		if _, err := os.Stat(filepath.Join(gameInfo.GameDir, archiveName)); err == nil {
+			packedRestored = true
+			break
+		}
+	}
+	if packedRestored {
 		dataPath := filepath.Join(gameInfo.GameDir, "Data")
 		if _, err := os.Stat(dataPath); err == nil {
 			os.RemoveAll(dataPath)

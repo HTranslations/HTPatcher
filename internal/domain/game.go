@@ -4,15 +4,15 @@ import "htpatcher/internal/util"
 
 // GameInfo represents information about an RPG Maker game
 type GameInfo struct {
-	GameDir     string           `json:"gameDir"`
-	ExePath     string           `json:"exePath"`
-	DataPath    string           `json:"dataPath"`
-	JsPath      string           `json:"jsPath"`
-	ImgPath     string           `json:"imgPath"`
-	GameTitle   string           `json:"gameTitle"`
-	GameVersion   string             `json:"gameVersion"` // "mv", "mz", "vxace", or "" for unknown
-	DataCipher    *util.DataCipher   `json:"-"`           // non-nil when data/*.json files are XOR-obfuscated
-	WrapperCipher *util.WrapperCipher `json:"-"`          // non-nil when data/*.json files use {uid,bid,data} wrapper encryption
+	GameDir       string              `json:"gameDir"`
+	ExePath       string              `json:"exePath"`
+	DataPath      string              `json:"dataPath"`
+	JsPath        string              `json:"jsPath"`
+	ImgPath       string              `json:"imgPath"`
+	GameTitle     string              `json:"gameTitle"`
+	GameVersion   string              `json:"gameVersion"` // "mv", "mz", "vx", "vxace", or "" for unknown
+	DataCipher    *util.DataCipher    `json:"-"`           // non-nil when data/*.json files are XOR-obfuscated
+	WrapperCipher *util.WrapperCipher `json:"-"`           // non-nil when data/*.json files use {uid,bid,data} wrapper encryption
 }
 
 // EnsureDataCipher populates DataCipher by re-scanning rmmz_managers.js when
@@ -20,7 +20,7 @@ type GameInfo struct {
 // by value and DataCipher is excluded from JSON, so the field is dropped on
 // the round-trip from frontend.
 func (g *GameInfo) EnsureDataCipher() {
-	if g == nil || g.DataCipher != nil || g.GameVersion == "vxace" || g.JsPath == "" {
+	if g == nil || g.DataCipher != nil || g.GameVersion == "vx" || g.GameVersion == "vxace" || g.JsPath == "" {
 		return
 	}
 	g.DataCipher = util.DetectDataCipher(g.JsPath)
@@ -29,7 +29,7 @@ func (g *GameInfo) EnsureDataCipher() {
 // EnsureWrapperCipher populates WrapperCipher by re-scanning the data directory
 // when it hasn't been set yet.
 func (g *GameInfo) EnsureWrapperCipher() {
-	if g == nil || g.WrapperCipher != nil || g.GameVersion == "vxace" || g.DataPath == "" {
+	if g == nil || g.WrapperCipher != nil || g.GameVersion == "vx" || g.GameVersion == "vxace" || g.DataPath == "" {
 		return
 	}
 	g.WrapperCipher = util.DetectWrapperCipher(g.DataPath)
@@ -79,7 +79,7 @@ type PatchDownload struct {
 // GamePatchInfo represents the response from GET /api/patches/{storeCode}
 type GamePatchInfo struct {
 	Store     string           `json:"store"`
-	StoreCode string          `json:"storeCode"`
+	StoreCode string           `json:"storeCode"`
 	Status    string           `json:"status"`
 	Title     string           `json:"title"`
 	Slug      string           `json:"slug"`

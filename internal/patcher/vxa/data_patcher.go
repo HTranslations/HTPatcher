@@ -450,6 +450,14 @@ func patchSystem(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 		patchStringArray(termsObj, "params", dict, km, "system_term")
 		patchStringArray(termsObj, "etypes", dict, km, "system_term")
 		patchStringArray(termsObj, "commands", dict, km, "system_term")
+		// RPG Maker VX stores its system terms as named string properties.
+		for key, value := range termsObj.Properties {
+			if original, ok := value.(string); ok {
+				if translation, exists := util.DictLookup(dict, km, "system_term", original); exists {
+					termsObj.Properties[key] = translation
+				}
+			}
+		}
 	}
 
 	return marshal.Write(obj)

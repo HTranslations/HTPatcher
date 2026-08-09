@@ -165,7 +165,7 @@ func (s *PatchService) ApplyPatch(ctx context.Context, gameInfo *domain.GameInfo
 	s.logger.Info("Starting patch application...")
 
 	// Route to VX Ace patcher if needed
-	if gameInfo.GameVersion == "vxace" {
+	if gameInfo.GameVersion == "vx" || gameInfo.GameVersion == "vxace" {
 		return s.applyVXAcePatch(ctx, gameInfo, patchInfo)
 	}
 
@@ -215,9 +215,9 @@ func (s *PatchService) logPatchSummary(stats *util.PatchStats, totalDictEntries 
 	s.logger.Info("─────────────────────")
 }
 
-// applyVXAcePatch applies a patch to a VX Ace game
+// applyVXAcePatch applies a patch to a VX or VX Ace game.
 func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) error {
-	s.logger.Info("Detected VX Ace game, using VX Ace patcher...")
+	s.logger.Info(fmt.Sprintf("Detected %s game, using RGSS patcher...", strings.ToUpper(gameInfo.GameVersion)))
 
 	// Start tracking patch statistics
 	util.StartTracking()
@@ -243,7 +243,11 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 				s.logger.Error("Failed to read override")
 				return err
 			}
-			err = os.WriteFile(filepath.Join(gameInfo.GameDir, override), data, 0644)
+			destination := filepath.Join(gameInfo.GameDir, override)
+			if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
+				return err
+			}
+			err = os.WriteFile(destination, data, 0644)
 			if err != nil {
 				s.logger.Error("Failed to write override")
 				return err
@@ -259,11 +263,15 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 		dataPath = filepath.Join(gameInfo.GameDir, "Data")
 	}
 
-	titleImageName, err := s.vxaEngine.GetSystemTitleImageName(dataPath)
-	if err != nil {
-		s.logger.Warn(fmt.Sprintf("Could not read title image name: %v", err))
+	var titleImagePath string
+	if gameInfo.GameVersion == "vx" {
+		titleImagePath = findCaseInsensitiveFile(filepath.Join(gameInfo.GameDir, "Graphics", "System"), "Title.png")
+	} else if titleImageName, titleErr := s.vxaEngine.GetSystemTitleImageName(dataPath); titleErr != nil {
+		s.logger.Warn(fmt.Sprintf("Could not read title image name: %v", titleErr))
 	} else if titleImageName != "" {
-		titleImagePath := filepath.Join(gameInfo.GameDir, "Graphics", "Titles1", titleImageName+".png")
+		titleImagePath = filepath.Join(gameInfo.GameDir, "Graphics", "Titles1", titleImageName+".png")
+	}
+	if titleImagePath != "" {
 		if _, err := os.Stat(titleImagePath); err == nil {
 			if patchInfo.Config.CreditsLocation == "" {
 				patchInfo.Config.CreditsLocation = "bottom_left"
@@ -311,6 +319,19 @@ func (s *PatchService) applyVXAcePatch(ctx context.Context, gameInfo *domain.Gam
 	}
 
 	return nil
+}
+
+func findCaseInsensitiveFile(dir, name string) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return filepath.Join(dir, name)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.EqualFold(entry.Name(), name) {
+			return filepath.Join(dir, entry.Name())
+		}
+	}
+	return filepath.Join(dir, name)
 }
 
 // applyMVMZPatch applies a patch to a MV/MZ game

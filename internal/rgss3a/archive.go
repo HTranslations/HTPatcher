@@ -1,4 +1,5 @@
-// Package rgss3a provides reading functionality for RGSS3A archives used by RPG Maker VX Ace.
+// Package rgss3a provides reading functionality for RGSSAD archives used by
+// RPG Maker VX (version 1) and VX Ace (version 3).
 package rgss3a
 
 import (
@@ -9,7 +10,7 @@ import (
 	"strings"
 )
 
-const header = "RGSSAD\x00\x03"
+const headerPrefix = "RGSSAD\x00"
 
 // FileEntry represents a file entry in the archive.
 type FileEntry struct {
@@ -23,6 +24,7 @@ type FileEntry struct {
 type Archive struct {
 	file    *os.File
 	entries map[string]*FileEntry // normalized path -> entry
+	version byte
 }
 
 // Open opens an RGSS3A archive for reading.
@@ -60,9 +62,17 @@ func (a *Archive) readEntries() error {
 	if _, err := a.file.Read(headerBytes); err != nil {
 		return fmt.Errorf("failed to read header: %w", err)
 	}
-	if string(headerBytes) != header {
-		return fmt.Errorf("invalid RGSS3A header: %q", headerBytes)
+	if string(headerBytes[:7]) != headerPrefix || (headerBytes[7] != 1 && headerBytes[7] != 3) {
+		return fmt.Errorf("unsupported RGSSAD header: %q", headerBytes)
 	}
+	a.version = headerBytes[7]
+	if a.version == 1 {
+		return a.readVersion1Entries()
+	}
+	return a.readVersion3Entries()
+}
+
+func (a *Archive) readVersion3Entries() error {
 
 	// Read the base key (at offset 8)
 	var baseKey uint32
@@ -146,6 +156,60 @@ func (a *Archive) readEntries() error {
 	return nil
 }
 
+// Version 1 stores each file's metadata immediately before its encrypted data.
+// A single evolving key encrypts metadata; each file captures the current key
+// as the initial key for its contents.
+func (a *Archive) readVersion1Entries() error {
+	key := uint32(0xdeadcafe)
+	readUint32 := func() (uint32, error) {
+		var encrypted uint32
+		if err := binary.Read(a.file, binary.LittleEndian, &encrypted); err != nil {
+			return 0, err
+		}
+		value := encrypted ^ key
+		key = key*7 + 3
+		return value, nil
+	}
+	for {
+		nameLen, err := readUint32()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read name length: %w", err)
+		}
+		if nameLen == 0 || nameLen > 4096 {
+			return fmt.Errorf("invalid name length: %d", nameLen)
+		}
+		nameBytes := make([]byte, nameLen)
+		if _, err := io.ReadFull(a.file, nameBytes); err != nil {
+			return fmt.Errorf("failed to read name: %w", err)
+		}
+		for i := range nameBytes {
+			nameBytes[i] ^= byte(key)
+			key = key*7 + 3
+		}
+		size, err := readUint32()
+		if err != nil {
+			return fmt.Errorf("failed to read file size: %w", err)
+		}
+		offset, err := a.file.Seek(0, io.SeekCurrent)
+		if err != nil {
+			return fmt.Errorf("failed to locate file data: %w", err)
+		}
+		name := strings.ReplaceAll(string(nameBytes), "\\", "/")
+		a.entries[strings.ToLower(name)] = &FileEntry{
+			Offset: uint32(offset), Size: size, Key: key, Name: name,
+		}
+		if _, err := a.file.Seek(int64(size), io.SeekCurrent); err != nil {
+			return fmt.Errorf("failed to skip file data: %w", err)
+		}
+	}
+}
+
+// Version reports the RGSSAD archive version (1 for VX, 3 for VX Ace).
+func (a *Archive) Version() byte { return a.version }
+
 // List returns all file paths in the archive.
 func (a *Archive) List() []string {
 	paths := make([]string, 0, len(a.entries))
@@ -173,13 +237,13 @@ func (a *Archive) ListDir(dir string) []string {
 
 // HasFile checks if a file exists in the archive.
 func (a *Archive) HasFile(path string) bool {
-	_, ok := a.entries[strings.ToLower(path)]
+	_, ok := a.entries[normalizeArchivePath(path)]
 	return ok
 }
 
 // ReadFile reads and decrypts a file from the archive into memory.
 func (a *Archive) ReadFile(path string) ([]byte, error) {
-	entry, ok := a.entries[strings.ToLower(path)]
+	entry, ok := a.entries[normalizeArchivePath(path)]
 	if !ok {
 		return nil, fmt.Errorf("file not found in archive: %s", path)
 	}
@@ -204,5 +268,9 @@ func (a *Archive) ReadFile(path string) ([]byte, error) {
 
 // GetEntry returns the entry for a file path, or nil if not found.
 func (a *Archive) GetEntry(path string) *FileEntry {
-	return a.entries[strings.ToLower(path)]
+	return a.entries[normalizeArchivePath(path)]
+}
+
+func normalizeArchivePath(path string) string {
+	return strings.ToLower(strings.ReplaceAll(path, "\\", "/"))
 }

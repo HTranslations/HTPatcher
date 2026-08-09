@@ -32,44 +32,48 @@ func NewEngine(logger Logger) *Engine {
 	}
 }
 
-// PatchGame patches a VX Ace game with translations
+// PatchGame patches a VX or VX Ace game with translations.
 func (e *Engine) PatchGame(ctx context.Context, gameInfo *domain.GameInfo, patchInfo *domain.PatchInfo) ([]string, error) {
 	var patchedFiles []string
+	archiveName, extension := "Game.rgss3a", ".rvdata2"
+	if gameInfo.GameVersion == "vx" {
+		archiveName, extension = "Game.rgss2a", ".rvdata"
+	}
 
 	// Check if we need to extract from archive first
-	rgss3aPath := filepath.Join(gameInfo.GameDir, "Game.rgss3a")
-	if _, err := os.Stat(rgss3aPath); err == nil {
-		e.logger.Info("Extracting Game.rgss3a archive...")
-		if err := e.extractArchive(rgss3aPath, gameInfo.GameDir); err != nil {
+	archivePath := filepath.Join(gameInfo.GameDir, archiveName)
+	if _, err := os.Stat(archivePath); err == nil {
+		e.logger.Info("Extracting " + archiveName + " archive...")
+		if err := e.extractArchive(archivePath, gameInfo.GameDir); err != nil {
 			return nil, fmt.Errorf("failed to extract archive: %w", err)
 		}
 		e.logger.Success("Archive extracted successfully")
 
 		// Delete the archive so game reads from extracted files
-		if err := os.Remove(rgss3aPath); err != nil {
+		if err := os.Remove(archivePath); err != nil {
 			e.logger.Warn(fmt.Sprintf("Failed to remove archive: %v", err))
 		} else {
-			e.logger.Info("Removed Game.rgss3a (game will now read from Data folder)")
+			e.logger.Info("Removed " + archiveName + " (game will now read from Data folder)")
 		}
 	}
 
-	// Scan for .rvdata2 files
+	// Scan for engine data files.
 	dataPath := gameInfo.DataPath
 	if dataPath == "" {
 		dataPath = filepath.Join(gameInfo.GameDir, "Data")
 	}
 
-	e.logger.Info(fmt.Sprintf("Scanning %s for .rvdata2 files...", dataPath))
+	e.logger.Info(fmt.Sprintf("Scanning %s for %s files...", dataPath, extension))
 
-	rvdata2Files, err := util.ListFilesWithExtension(dataPath, ".rvdata2")
+	dataFiles, err := util.ListFilesWithExtension(dataPath, extension)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan data folder: %w", err)
 	}
 
-	e.logger.Info(fmt.Sprintf("Found %d .rvdata2 files to patch", len(rvdata2Files)))
+	e.logger.Info(fmt.Sprintf("Found %d %s files to patch", len(dataFiles), extension))
 
 	// Patch each file
-	for _, filePath := range rvdata2Files {
+	for _, filePath := range dataFiles {
 		if err := e.patchDataFile(ctx, filePath, patchInfo); err != nil {
 			e.logger.Error(fmt.Sprintf("Error patching %s: %v", filepath.Base(filePath), err))
 			return nil, err
