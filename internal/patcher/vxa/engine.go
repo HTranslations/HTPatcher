@@ -74,7 +74,7 @@ func (e *Engine) PatchGame(ctx context.Context, gameInfo *domain.GameInfo, patch
 
 	// Patch each file
 	for _, filePath := range dataFiles {
-		if err := e.patchDataFile(ctx, filePath, patchInfo); err != nil {
+		if err := e.patchDataFile(ctx, filePath, patchInfo, gameInfo.GameVersion == "vx"); err != nil {
 			e.logger.Error(fmt.Sprintf("Error patching %s: %v", filepath.Base(filePath), err))
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func (e *Engine) extractArchive(archivePath, outputDir string) error {
 }
 
 // patchDataFile patches a single .rvdata2 file based on its type
-func (e *Engine) patchDataFile(ctx context.Context, filePath string, patchInfo *domain.PatchInfo) error {
+func (e *Engine) patchDataFile(ctx context.Context, filePath string, patchInfo *domain.PatchInfo, isVX bool) error {
 	filename := filepath.Base(filePath)
 	e.logger.Info("Patching: " + filename)
 
@@ -122,11 +122,11 @@ func (e *Engine) patchDataFile(ctx context.Context, filePath string, patchInfo *
 	case "states":
 		patchedData, err = patchStates(data, patchInfo)
 	case "troops":
-		patchedData, err = patchTroops(data, patchInfo)
+		patchedData, err = patchTroops(data, patchInfo, isVX)
 	case "commonevents":
-		patchedData, err = patchCommonEvents(data, patchInfo)
+		patchedData, err = patchCommonEvents(data, patchInfo, isVX)
 	case "map":
-		patchedData, err = patchMap(data, patchInfo)
+		patchedData, err = patchMap(data, patchInfo, isVX)
 	case "mapinfos":
 		patchedData, err = patchMapInfos(data, patchInfo)
 	case "system":

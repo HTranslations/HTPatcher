@@ -9,6 +9,7 @@ import (
 	"htpatcher/internal/util"
 	"io"
 	"strconv"
+	"strings"
 )
 
 // patchActors patches Actors.rvdata2
@@ -272,7 +273,7 @@ func patchStates(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 }
 
 // patchTroops patches Troops.rvdata2
-func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
+func patchTroops(data []byte, patchInfo *domain.PatchInfo, isVX bool) ([]byte, error) {
 	raw, err := marshal.Parse(data)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
@@ -304,7 +305,7 @@ func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 			if !ok {
 				continue
 			}
-			patchEventCommands(pageObj, patchInfo)
+			patchEventCommands(pageObj, patchInfo, isVX)
 		}
 	}
 
@@ -312,7 +313,7 @@ func patchTroops(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 }
 
 // patchCommonEvents patches CommonEvents.rvdata2
-func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
+func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo, isVX bool) ([]byte, error) {
 	raw, err := marshal.Parse(data)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
@@ -336,14 +337,14 @@ func patchCommonEvents(data []byte, patchInfo *domain.PatchInfo) ([]byte, error)
 		}
 
 		patchStringProperty(obj, "name", dict, km, "common_event_name", false, 0)
-		patchEventCommands(obj, patchInfo)
+		patchEventCommands(obj, patchInfo, isVX)
 	}
 
 	return marshal.Write(arr)
 }
 
 // patchMap patches a Map*.rvdata2 file
-func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
+func patchMap(data []byte, patchInfo *domain.PatchInfo, isVX bool) ([]byte, error) {
 	raw, err := marshal.Parse(data)
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
@@ -379,7 +380,7 @@ func patchMap(data []byte, patchInfo *domain.PatchInfo) ([]byte, error) {
 				if !ok {
 					continue
 				}
-				patchEventCommands(pageObj, patchInfo)
+				patchEventCommands(pageObj, patchInfo, isVX)
 			}
 		}
 	}
@@ -510,7 +511,7 @@ func patchStringArray(obj *marshal.RubyObject, key string, dictionary map[string
 }
 
 // patchEventCommands patches the event command list on a RubyObject that has a "list" property
-func patchEventCommands(obj *marshal.RubyObject, patchInfo *domain.PatchInfo) {
+func patchEventCommands(obj *marshal.RubyObject, patchInfo *domain.PatchInfo, isVX bool) {
 	if obj == nil || obj.Properties == nil {
 		return
 	}
@@ -531,7 +532,7 @@ func patchEventCommands(obj *marshal.RubyObject, patchInfo *domain.PatchInfo) {
 	}
 
 	// Patch commands
-	newCommands := patchCommands(commands, patchInfo)
+	newCommands := patchCommands(commands, patchInfo, isVX)
 
 	// Convert back to interface array
 	newList := make([]interface{}, len(newCommands))
@@ -571,8 +572,9 @@ func (c *commandWrapper) setParameters(params []interface{}) {
 }
 
 // patchCommands patches a list of event commands
-func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*commandWrapper {
+func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo, isVX bool) []*commandWrapper {
 	commandsToDelete := make(map[int]bool)
+	commandsToInsertAfter := make(map[int][]*commandWrapper)
 	commandIndex := 0
 	last101HasThumbnail := false
 
@@ -625,11 +627,32 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 			commandIndex--
 
 			if translation, exists := util.DictLookup(dict, km, "dialogue", fullText); exists {
-				dialogueCommands[0].setParameter(0, util.Wrap(translation, wrapWidth))
-				// Mark subsequent 401 commands for deletion
-				startIdx := commandIndex - len(dialogueCommands) + 2
-				for k := startIdx; k <= commandIndex; k++ {
-					commandsToDelete[k] = true
+				wrapped := util.Wrap(translation, wrapWidth)
+				if isVX {
+					// VX tracks each displayed line as a separate 401 command. This is
+					// also used to position choices, so embedded separators are not enough.
+					lines := strings.Split(wrapped, "\n")
+					startIdx := commandIndex - len(dialogueCommands) + 1
+					for i, line := range lines {
+						if i < len(dialogueCommands) {
+							dialogueCommands[i].setParameter(0, line)
+						} else {
+							commandsToInsertAfter[commandIndex] = append(
+								commandsToInsertAfter[commandIndex],
+								cloneCommandWithText(dialogueCommands[0], line),
+							)
+						}
+					}
+					for i := len(lines); i < len(dialogueCommands); i++ {
+						commandsToDelete[startIdx+i] = true
+					}
+				} else {
+					dialogueCommands[0].setParameter(0, wrapped)
+					// VX Ace accepts embedded LF, so only one 401 command is needed.
+					startIdx := commandIndex - len(dialogueCommands) + 2
+					for k := startIdx; k <= commandIndex; k++ {
+						commandsToDelete[k] = true
+					}
 				}
 			}
 		}
@@ -768,9 +791,31 @@ func patchCommands(commands []*commandWrapper, patchInfo *domain.PatchInfo) []*c
 		if !commandsToDelete[i] {
 			result = append(result, cmd)
 		}
+		result = append(result, commandsToInsertAfter[i]...)
 	}
 
 	return result
+}
+
+// cloneCommandWithText creates another event-text command while preserving any
+// engine-specific properties present on the source command.
+func cloneCommandWithText(source *commandWrapper, text string) *commandWrapper {
+	properties := make(map[string]interface{}, len(source.obj.Properties))
+	for key, value := range source.obj.Properties {
+		properties[key] = value
+	}
+	parameters := append([]interface{}(nil), source.getParameters()...)
+	if len(parameters) == 0 {
+		parameters = []interface{}{text}
+	} else {
+		parameters[0] = text
+	}
+	properties["parameters"] = parameters
+
+	return &commandWrapper{obj: &marshal.RubyObject{
+		Class:      source.obj.Class,
+		Properties: properties,
+	}}
 }
 
 // patchVariableValue patches variable assignment values (for plugin-specific text)
