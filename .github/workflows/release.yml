@@ -81,6 +81,14 @@ jobs:
             artifact: htpatcher-cli
             goos: linux
             goarch: amd64
+          - os: ubuntu-latest
+            artifact: htpatcher-cli-linux-arm64
+            goos: linux
+            goarch: arm64
+          - os: ubuntu-latest
+            artifact: htpatcher-cli-android-arm64
+            goos: android
+            goarch: arm64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -146,6 +154,18 @@ jobs:
           name: htpatcher-cli
           path: artifacts/
 
+      - name: Download Linux ARM64 CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: htpatcher-cli-linux-arm64
+          path: artifacts/
+
+      - name: Download Android ARM64 CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: htpatcher-cli-android-arm64
+          path: artifacts/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -157,6 +177,8 @@ jobs:
             ### Installation
             **Windows:** Download `htpatcher.exe` and run it.
             **Linux:** Download `htpatcher`, make it executable (`chmod +x htpatcher`), and run it.
+            **Linux ARM64:** Download `htpatcher-cli-linux-arm64`, make it executable, and run it.
+            **Android (Termux):** Download `htpatcher-cli-android-arm64`, make it executable (`chmod +x htpatcher-cli-android-arm64`), and run it.
 
             ### Changes
             - Release version ${{ steps.version.outputs.VERSION }}
@@ -167,5 +189,7 @@ jobs:
             artifacts/htpatcher
             artifacts/htpatcher-cli.exe
             artifacts/htpatcher-cli
+            artifacts/htpatcher-cli-linux-arm64
+            artifacts/htpatcher-cli-android-arm64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
