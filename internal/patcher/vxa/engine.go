@@ -9,6 +9,7 @@ import (
 	"htpatcher/internal/util"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -206,10 +207,12 @@ func (e *Engine) getDataFileType(filePath string) string {
 		return fileType
 	}
 
-	// Check for Map files (Map001.rvdata2, etc.)
-	if strings.HasPrefix(filename, "map") && len(filename) > 3 {
+	// Map files only (Map001.rvdata2); stray copies like MapInfos_backup are skipped.
+	if mapFileName.MatchString(filename) {
 		return "map"
 	}
 
 	return filename
 }
+
+var mapFileName = regexp.MustCompile(`^map[0-9]+$`)

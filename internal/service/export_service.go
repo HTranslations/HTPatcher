@@ -84,7 +84,13 @@ func (s *ExportService) ExportPatchedFiles(ctx context.Context, gameDir string, 
 
 	// Add each patched file to the ZIP
 	filesAdded := 0
+	seen := map[string]bool{}
 	for _, relPath := range patchSummary.PatchedFiles {
+		// patch-summary.json can list a file twice (js/plugins.js: plugin parameters + PatchChecker injection)
+		if seen[relPath] {
+			continue
+		}
+		seen[relPath] = true
 		srcPath := filepath.Join(gameDir, relPath)
 
 		// Check if file exists
@@ -102,7 +108,11 @@ func (s *ExportService) ExportPatchedFiles(ctx context.Context, gameDir string, 
 
 		// Create entry in ZIP (use forward slashes for ZIP compatibility)
 		zipPath := filepath.ToSlash(relPath)
-		writer, err := zipWriter.Create(zipPath)
+		// Mark the entry as Unix-made: Info-ZIP's unzip ignores the UTF-8 name flag on DOS-made archives
+		// (Go's default) and extracts Japanese file names as mojibake.
+		header := &zip.FileHeader{Name: zipPath, Method: zip.Deflate}
+		header.SetMode(0644)
+		writer, err := zipWriter.CreateHeader(header)
 		if err != nil {
 			srcFile.Close()
 			s.logger.Error("Failed to create ZIP entry: " + relPath)

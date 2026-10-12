@@ -6,6 +6,7 @@ import (
 	"htpatcher/internal/domain/rpgmaker"
 	"htpatcher/internal/util"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -109,11 +110,16 @@ func getDataFileTypeMap(filePath string) string {
 	if fileType, ok := fileTypeMap[filename]; ok {
 		return fileType
 	}
-	if strings.HasPrefix(filename, "map") {
+	if mapFileName.MatchString(filename) {
 		return "map"
 	}
 	return filename
 }
+
+// mapFileName matches map files only (Map001.json). Games sometimes ship stray
+// copies such as MapInfos_backup20260322.json (ゆめおち); a plain "map" prefix
+// sent those to the map patcher, which failed and aborted the whole patch.
+var mapFileName = regexp.MustCompile(`^map[0-9]+$`)
 
 // PatchCommands patches event commands (used by maps, common events, troops)
 func (e *Engine) PatchCommands(commands []*rpgmaker.EventCommand, patchInfo *domain.PatchInfo) ([]*rpgmaker.EventCommand, error) {

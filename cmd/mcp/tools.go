@@ -366,7 +366,13 @@ func registerTools(s *server.MCPServer, svc *Services) {
 		defer zipWriter.Close()
 
 		filesAdded := 0
+		seen := map[string]bool{}
 		for _, relPath := range patchSummary.PatchedFiles {
+			// patch-summary.json can list a file twice (js/plugins.js: plugin parameters + PatchChecker injection)
+			if seen[relPath] {
+				continue
+			}
+			seen[relPath] = true
 			srcPath := filepath.Join(gameDir, relPath)
 			if _, err := os.Stat(srcPath); os.IsNotExist(err) {
 				continue
@@ -378,7 +384,11 @@ func registerTools(s *server.MCPServer, svc *Services) {
 			}
 
 			zipPath := filepath.ToSlash(relPath)
-			writer, err := zipWriter.Create(zipPath)
+			// Mark the entry as Unix-made: Info-ZIP's unzip ignores the UTF-8 name flag on DOS-made archives
+			// (Go's default) and extracts Japanese file names as mojibake.
+			header := &zip.FileHeader{Name: zipPath, Method: zip.Deflate}
+			header.SetMode(0644)
+			writer, err := zipWriter.CreateHeader(header)
 			if err != nil {
 				srcFile.Close()
 				return mcp.NewToolResultError(fmt.Sprintf("failed to create ZIP entry %s: %v", relPath, err)), nil
