@@ -1,6 +1,6 @@
 /*:
  * @target MV MZ
- * @plugindesc [v1.1] HTranslations — patch update checker + auto word wrap.
+ * @plugindesc [v1.2] HTranslations — patch update checker + auto word wrap.
  * @author HTranslations
  * @url https://htranslations.com
  *
@@ -117,27 +117,40 @@
       return visible;
     };
 
-    /** Sum escape-based pixel width (icons) in text. */
-    Window_Base.prototype._htEscapeWidth = function (text) {
+    Window_Base.prototype._htMeasureRaw = function (raw, size) {
+      var saved = this.contents.fontSize;
+      this.contents.fontSize = size;
       var w = 0;
+      var seg = "";
       var i = 0;
-      while (i < text.length) {
-        if (text[i] === "\x1b") {
-          var esc = this._htReadEscape(text, i);
-          w += esc.width;
+      while (i < raw.length) {
+        if (raw[i] === "\x1b") {
+          var esc = this._htReadEscape(raw, i);
+          var code = raw.substring(i + 1, esc.end);
+          if (code === "{" || code === "}") {
+            w += this.contents.measureTextWidth(seg);
+            seg = "";
+            if (code === "{") this.makeFontBigger(); else this.makeFontSmaller();
+          } else {
+            w += esc.width;
+          }
           i = esc.end;
         } else {
+          seg += raw[i];
           i++;
         }
       }
-      return w;
+      w += this.contents.measureTextWidth(seg);
+      var end = this.contents.fontSize;
+      this.contents.fontSize = saved;
+      return { width: w, size: end };
     };
 
     /**
      * Wrap a single line to fit within maxWidth pixels.
      * Uses word wrap with whole-string measurement for accurate kerning.
      */
-    Window_Base.prototype._htWrapLine = function (line, maxWidth) {
+    Window_Base.prototype._htWrapLine = function (line, maxWidth, state) {
       // Tokenize into words and spaces (escape sequences attach to adjacent words)
       var tokens = [];
       var i = 0;
@@ -158,80 +171,66 @@
       }
       if (word) tokens.push(word);
 
-      // Build wrapped output, tracking the current line's visible text
-      // so we can measure the whole line at once (accurate kerning)
+      var self = this;
+      var lineSize = state && state.size ? state.size : this.contents.fontSize;
       var lines = [[]];
-      var curVisible = "";
-      var curEscW = 0;
+      var curRaw = "";
+      var width = function (raw) { return self._htMeasureRaw(raw, lineSize).width; };
+      var hasVisible = function () { return self._htVisibleText(curRaw).length > 0; };
+      var newLine = function () {
+        lineSize = self._htMeasureRaw(curRaw, lineSize).size;
+        lines.push([]);
+        curRaw = "";
+      };
 
       for (var t = 0; t < tokens.length; t++) {
         var tok = tokens[t];
 
         if (tok === " ") {
-          var testWidth = this.contents.measureTextWidth(curVisible + " ") + curEscW;
-          if (testWidth > maxWidth) {
-            lines.push([]);
-            curVisible = "";
-            curEscW = 0;
+          if (width(curRaw + " ") > maxWidth) {
+            newLine();
           } else {
             lines[lines.length - 1].push(" ");
-            curVisible += " ";
+            curRaw += " ";
           }
           continue;
         }
 
-        var tokVisible = this._htVisibleText(tok);
-        var tokEscW = this._htEscapeWidth(tok);
-        var testWidth2 = this.contents.measureTextWidth(curVisible + tokVisible) + curEscW + tokEscW;
-
-        if (curVisible.length > 0 && testWidth2 > maxWidth) {
+        if (hasVisible() && width(curRaw + tok) > maxWidth) {
           // Trim trailing space from current line
           var curLine = lines[lines.length - 1];
           if (curLine.length > 0 && curLine[curLine.length - 1] === " ") {
             curLine.pop();
-            curVisible = curVisible.substring(0, curVisible.length - 1);
+            curRaw = curRaw.substring(0, curRaw.length - 1);
           }
-          lines.push([]);
-          curVisible = "";
-          curEscW = 0;
+          newLine();
         }
 
         // Word alone is wider than maxWidth — character-wrap it
-        if (this.contents.measureTextWidth(tokVisible) + tokEscW > maxWidth) {
+        if (width(curRaw + tok) > maxWidth) {
           var ci = 0;
           while (ci < tok.length) {
+            var piece;
             if (tok[ci] === "\x1b") {
               var cesc = this._htReadEscape(tok, ci);
-              if (cesc.width > 0) {
-                var cTestW = this.contents.measureTextWidth(curVisible) + curEscW + cesc.width;
-                if (cTestW > maxWidth && curVisible.length > 0) {
-                  lines.push([]);
-                  curVisible = "";
-                  curEscW = 0;
-                }
-                curEscW += cesc.width;
-              }
-              lines[lines.length - 1].push(tok.substring(ci, cesc.end));
+              piece = tok.substring(ci, cesc.end);
+              if (cesc.width > 0 && hasVisible() && width(curRaw + piece) > maxWidth) newLine();
               ci = cesc.end;
             } else {
-              var cTestW2 = this.contents.measureTextWidth(curVisible + tok[ci]) + curEscW;
-              if (cTestW2 > maxWidth && curVisible.length > 0) {
-                lines.push([]);
-                curVisible = "";
-                curEscW = 0;
-              }
-              curVisible += tok[ci];
-              lines[lines.length - 1].push(tok[ci]);
+              piece = tok[ci];
+              if (hasVisible() && width(curRaw + piece) > maxWidth) newLine();
               ci++;
             }
+            curRaw += piece;
+            lines[lines.length - 1].push(piece);
           }
           continue;
         }
 
         lines[lines.length - 1].push(tok);
-        curVisible += tokVisible;
-        curEscW += tokEscW;
+        curRaw += tok;
       }
+      if (state) state.size = this._htMeasureRaw(curRaw, lineSize).size;
 
       var output = [];
       for (var li = 0; li < lines.length; li++) {
@@ -245,8 +244,9 @@
       if (maxWidth <= 0) return text;
       var lines = text.split("\n");
       var wrapped = [];
+      var state = { size: this.contents.fontSize };
       for (var i = 0; i < lines.length; i++) {
-        wrapped.push(this._htWrapLine(lines[i], maxWidth));
+        wrapped.push(this._htWrapLine(lines[i], maxWidth, state));
       }
       return wrapped.join("\n");
     };
@@ -258,31 +258,53 @@
 
     // --- Window_Message hook ---
 
+    var HT_HAS_POPUP = typeof Window_Message.prototype.processVirtual === "function" &&
+      typeof Window_Message.prototype.isPopup === "function" &&
+      typeof Window_Message.prototype.resetLayout === "function";
+    if (HT_HAS_POPUP) {
+      var _HT_WM_processVirtual = Window_Message.prototype.processVirtual;
+      Window_Message.prototype.processVirtual = function () {
+        var text = this._htPopupText;
+        if (text == null) return _HT_WM_processVirtual.apply(this, arguments);
+        $gameMessage.allText = function () { return text; };
+        try {
+          return _HT_WM_processVirtual.apply(this, arguments);
+        } finally {
+          delete $gameMessage.allText;
+        }
+      };
+    }
+
+    Window_Base.prototype._htWrapMessage = function () {
+      if (!this._textState || this._htPopupText !== this._textState.text) this._htPopupText = null;
+      if (!(this._textState && this._textState.text && this.contents)) return;
+      this.resetFontSettings();
+      var startX = this.newLineX(this._textState);
+      var popup = HT_HAS_POPUP && typeof this.isPopup === "function" && this.isPopup();
+      var avail = popup ? Math.min(Graphics.boxWidth - this.padding * 2, this.contents.width) : this.contentsWidth();
+      var maxWidth = this._htWrapWidth(avail - startX);
+      var wrapped = this._htWrapText(this._textState.text, maxWidth);
+      if (popup && wrapped !== this._textState.text) {
+        this._htPopupText = wrapped;
+        this.resetLayout();
+        this.resetFontSettings();
+      }
+      this._textState.text = wrapped;
+      this._textState.height = this.calcTextHeight(this._textState);
+      this._wordWrap = false;
+    };
+
     var _HT_WM_startMessage = Window_Message.prototype.startMessage;
     Window_Message.prototype.startMessage = function () {
       _HT_WM_startMessage.call(this);
-      if (this._textState && this._textState.text && this.contents) {
-        this.resetFontSettings();
-        var startX = this.newLineX(this._textState);
-        var maxWidth = this._htWrapWidth(this.contentsWidth() - startX);
-        this._textState.text = this._htWrapText(this._textState.text, maxWidth);
-        this._textState.height = this.calcTextHeight(this._textState);
-        this._wordWrap = false;
-      }
+      this._htWrapMessage();
     };
 
     if (typeof Window_MessageEx !== "undefined") {
       var _HT_WMEX_startMessage = Window_MessageEx.prototype.startMessage;
       Window_MessageEx.prototype.startMessage = function () {
         _HT_WMEX_startMessage.call(this);
-        if (this._textState && this._textState.text && this.contents) {
-          this.resetFontSettings();
-          var startX = this.newLineX(this._textState);
-          var maxWidth = this._htWrapWidth(this.contentsWidth() - startX);
-          this._textState.text = this._htWrapText(this._textState.text, maxWidth);
-          this._textState.height = this.calcTextHeight(this._textState);
-          this._wordWrap = false;
-        }
+        this._htWrapMessage();
       };
     }
 
