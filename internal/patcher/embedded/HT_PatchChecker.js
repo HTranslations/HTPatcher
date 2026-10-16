@@ -296,6 +296,7 @@
 
     var _HT_WM_startMessage = Window_Message.prototype.startMessage;
     Window_Message.prototype.startMessage = function () {
+      this._htPopupText = null;
       _HT_WM_startMessage.call(this);
       this._htWrapMessage();
     };
@@ -303,6 +304,7 @@
     if (typeof Window_MessageEx !== "undefined") {
       var _HT_WMEX_startMessage = Window_MessageEx.prototype.startMessage;
       Window_MessageEx.prototype.startMessage = function () {
+        this._htPopupText = null;
         _HT_WMEX_startMessage.call(this);
         this._htWrapMessage();
       };
