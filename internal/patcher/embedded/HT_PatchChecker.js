@@ -312,16 +312,68 @@
 
     var _HT_WH_setText = Window_Help.prototype.setText;
     Window_Help.prototype.setText = function (text) {
+      this._htHelpSize = 0;
       if (text && this.contents) {
         this.resetFontSettings();
         var pad = typeof this.textPadding === "function" ? this.textPadding() : 6;
         var maxWidth = this._htWrapWidth(this.contentsWidth() - pad);
-        text = this._htWrapText(text, maxWidth);
+        var base = this.contents.fontSize;
+        var gap = this.lineHeight() - base;
+        var room = this.contentsHeight();
+        var raw = text;
+        for (var s = base; s >= 8; s--) {
+          this.contents.fontSize = s;
+          text = this._htWrapText(raw, maxWidth);
+          if (text.split("\n").length * (s + gap) <= room) break;
+        }
+        if (s < base) this._htHelpSize = Math.max(s, 8);
+        this.resetFontSettings();
       }
       _HT_WH_setText.call(this, text);
     };
 
+    var _HT_WH_resetFontSettings = Window_Help.prototype.resetFontSettings;
+    Window_Help.prototype.resetFontSettings = function () {
+      _HT_WH_resetFontSettings.call(this);
+      if (this._htHelpSize && this.contents) this.contents.fontSize = this._htHelpSize;
+    };
+
     // --- Window_BattleLog hook ---
+
+    if (typeof Window_Status !== "undefined" &&
+        typeof Window_Status.prototype.drawProfile === "function" &&
+        typeof Window_Base.prototype.standardFontSize === "function") {
+      var _HT_WS_drawProfile = Window_Status.prototype.drawProfile;
+      Window_Status.prototype.drawProfile = function (x, y) {
+        var actor = this._actor;
+        if (!actor || !this.contents || typeof actor.profile !== "function") {
+          _HT_WS_drawProfile.call(this, x, y);
+          return;
+        }
+        var raw = actor.profile();
+        var pad = typeof this.textPadding === "function" ? this.textPadding() : 6;
+        var maxWidth = this._htWrapWidth(this.contentsWidth() - x - pad);
+        var room = this.contentsHeight() - y;
+        var base = this.standardFontSize();
+        var size = base;
+        var text = raw;
+        for (var s = base; s >= 8; s -= 2) {
+          size = s;
+          this.standardFontSize = function () { return size; };
+          this.resetFontSettings();
+          text = this._htWrapText(raw, maxWidth);
+          if (text.split("\n").length * (size + 8) <= room) break;
+        }
+        actor.profile = function () { return text; };
+        try {
+          _HT_WS_drawProfile.call(this, x, y);
+        } finally {
+          delete actor.profile;
+          delete this.standardFontSize;
+          this.resetFontSettings();
+        }
+      };
+    }
 
     var _HT_BL_addText = Window_BattleLog.prototype.addText;
     Window_BattleLog.prototype.addText = function (text) {
